@@ -1,0 +1,357 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:RetroCommander.Desktop.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="600"
+             x:Class="RetroCommander.Desktop.Controls.NavigationSidebar"
+             x:DataType="vm:NavigationSidebarViewModel">
+
+  <UserControl.Resources>
+    <!-- Context Menu for Sidebar Items -->
+    <ContextMenu x:Key="SidebarItemContextMenu">
+      <MenuItem Header="Open in Left Panel" Click="OnOpenInLeftPanel"/>
+      <MenuItem Header="Open in Right Panel" Click="OnOpenInRightPanel"/>
+      <Separator/>
+      <MenuItem Header="Mount" Click="OnMount" IsVisible="{Binding CanMount}"/>
+      <MenuItem Header="Unmount" Click="OnUnmount" IsVisible="{Binding CanUnmount}"/>
+      <Separator/>
+      <MenuItem Header="Properties" Click="OnProperties"/>
+      <MenuItem Header="Pin to Favorites" Click="OnPinToFavorites" IsVisible="{Binding CanPin}"/>
+    </ContextMenu>
+
+    <!-- Context Menu for items already in the Favorites section -->
+    <ContextMenu x:Key="FavoriteItemContextMenu">
+      <MenuItem Header="Open in Left Panel" Click="OnOpenInLeftPanel"/>
+      <MenuItem Header="Open in Right Panel" Click="OnOpenInRightPanel"/>
+      <Separator/>
+      <MenuItem Header="Remove from Favorites" Click="OnRemoveFromFavorites"/>
+    </ContextMenu>
+  </UserControl.Resources>
+
+  <Border Background="{DynamicResource FluentSidebarBackgroundBrush}"
+          BorderBrush="{DynamicResource FluentSidebarSeparatorBrush}"
+          BorderThickness="0,0,1,0">
+
+    <ScrollViewer>
+      <StackPanel Margin="8" Spacing="4">
+
+        <!-- This PC Section -->
+        <Border Classes="sidebar-section">
+          <StackPanel>
+            <!-- Section Header -->
+            <Border Classes="sidebar-section-header" 
+                    PointerPressed="OnSectionHeaderClicked"
+                    Tag="ThisPC">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" 
+                          Text="{Binding ThisPcSection.Icon}"
+                          FontSize="16" 
+                          Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" 
+                          Text="{Binding ThisPcSection.Title}"
+                          Classes="fluent-text-header"/>
+                <TextBlock Grid.Column="2" 
+                          Text="▼"
+                          FontSize="12"
+                          Classes="fluent-text-secondary"/>
+              </Grid>
+            </Border>
+
+            <!-- This PC Items -->
+            <StackPanel IsVisible="{Binding ThisPcSection.IsExpanded}"
+                       Margin="16,4,0,0"
+                       Spacing="2">
+              <ItemsControl ItemsSource="{Binding ThisPcSection.Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SidebarItemViewModel">
+                    <Button Classes="sidebar-item"
+                           Click="OnItemButtonClicked"
+                           Tag="{Binding}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0"
+                           Cursor="Hand"
+                           ContextMenu="{StaticResource SidebarItemContextMenu}"
+                           PointerPressed="OnItemPointerPressed">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2" IsHitTestVisible="False">
+                        <TextBlock Grid.Column="0" 
+                                  Text="{Binding Icon}"
+                                  FontSize="14"
+                                  Margin="0,0,8,0"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="1" 
+                                  Text="{Binding Name}"
+                                  Classes="fluent-text"
+                                  TextTrimming="CharacterEllipsis"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="2" 
+                                  Text="{Binding FilesystemType}"
+                                  Classes="fluent-text-secondary"
+                                  FontSize="10"
+                                  IsVisible="{Binding FilesystemType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  IsHitTestVisible="False"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- User Folders Section -->
+        <Border Classes="sidebar-section">
+          <StackPanel>
+            <!-- Section Header -->
+            <Border Classes="sidebar-section-header" 
+                    PointerPressed="OnSectionHeaderClicked"
+                    Tag="UserFolders">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" 
+                          Text="{Binding UserFoldersSection.Icon}"
+                          FontSize="16" 
+                          Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" 
+                          Text="{Binding UserFoldersSection.Title}"
+                          Classes="fluent-text-header"/>
+                <TextBlock Grid.Column="2" 
+                          Text="▼"
+                          FontSize="12"
+                          Classes="fluent-text-secondary"/>
+              </Grid>
+            </Border>
+
+            <!-- User Folders Items -->
+            <StackPanel IsVisible="{Binding UserFoldersSection.IsExpanded}"
+                       Margin="16,4,0,0"
+                       Spacing="2">
+              <ItemsControl ItemsSource="{Binding UserFoldersSection.Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SidebarItemViewModel">
+                    <Button Classes="sidebar-item"
+                           Click="OnItemButtonClicked"
+                           Tag="{Binding}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0"
+                           Cursor="Hand"
+                           ContextMenu="{StaticResource SidebarItemContextMenu}"
+                           PointerPressed="OnItemPointerPressed">
+                      <Grid ColumnDefinitions="Auto,*" Margin="4,2" IsHitTestVisible="False">
+                        <TextBlock Grid.Column="0" 
+                                  Text="{Binding Icon}"
+                                  FontSize="14"
+                                  Margin="0,0,8,0"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="1" 
+                                  Text="{Binding Name}"
+                                  Classes="fluent-text"
+                                  TextTrimming="CharacterEllipsis"
+                                  IsHitTestVisible="False"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Favorites Section -->
+        <Border Classes="sidebar-section">
+          <StackPanel>
+            <!-- Section Header -->
+            <Border Classes="sidebar-section-header"
+                    PointerPressed="OnSectionHeaderClicked"
+                    Tag="Favorites">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0"
+                          Text="{Binding FavoritesSection.Icon}"
+                          FontSize="16"
+                          Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1"
+                          Text="{Binding FavoritesSection.Title}"
+                          Classes="fluent-text-header"/>
+                <TextBlock Grid.Column="2"
+                          Text="▼"
+                          FontSize="12"
+                          Classes="fluent-text-secondary"/>
+              </Grid>
+            </Border>
+
+            <!-- Favorites Items -->
+            <StackPanel IsVisible="{Binding FavoritesSection.IsExpanded}"
+                       Margin="16,4,0,0"
+                       Spacing="2">
+              <ItemsControl ItemsSource="{Binding FavoritesSection.Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SidebarItemViewModel">
+                    <Button Classes="sidebar-item"
+                           Click="OnItemButtonClicked"
+                           Tag="{Binding}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0"
+                           Cursor="Hand"
+                           ContextMenu="{StaticResource FavoriteItemContextMenu}"
+                           PointerPressed="OnItemPointerPressed">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2" IsHitTestVisible="False">
+                        <TextBlock Grid.Column="0"
+                                  Text="{Binding Icon}"
+                                  FontSize="14"
+                                  Margin="0,0,8,0"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="1"
+                                  Text="{Binding Name}"
+                                  Classes="fluent-text"
+                                  TextTrimming="CharacterEllipsis"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="2"
+                                  Text="{Binding FilesystemType}"
+                                  Classes="fluent-text-secondary"
+                                  FontSize="10"
+                                  IsVisible="{Binding FilesystemType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  IsHitTestVisible="False"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Recents Section -->
+        <Border Classes="sidebar-section">
+          <StackPanel>
+            <!-- Section Header -->
+            <Border Classes="sidebar-section-header"
+                    PointerPressed="OnSectionHeaderClicked"
+                    Tag="Recents">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" 
+                          Text="{Binding RecentsSection.Icon}"
+                          FontSize="16" 
+                          Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" 
+                          Text="{Binding RecentsSection.Title}"
+                          Classes="fluent-text-header"/>
+                <TextBlock Grid.Column="2" 
+                          Text="▼"
+                          FontSize="12"
+                          Classes="fluent-text-secondary"/>
+              </Grid>
+            </Border>
+
+            <!-- Recents Items -->
+            <StackPanel IsVisible="{Binding RecentsSection.IsExpanded}"
+                       Margin="16,4,0,0"
+                       Spacing="2">
+              <ItemsControl ItemsSource="{Binding RecentsSection.Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SidebarItemViewModel">
+                    <Button Classes="sidebar-item"
+                           Click="OnItemButtonClicked"
+                           Tag="{Binding}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0"
+                           Cursor="Hand"
+                           ContextMenu="{StaticResource SidebarItemContextMenu}"
+                           PointerPressed="OnItemPointerPressed">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2" IsHitTestVisible="False">
+                        <TextBlock Grid.Column="0" 
+                                  Text="{Binding Icon}"
+                                  FontSize="14"
+                                  Margin="0,0,8,0"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="1" 
+                                  Text="{Binding Name}"
+                                  Classes="fluent-text"
+                                  TextTrimming="CharacterEllipsis"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="2" 
+                                  Text="{Binding FilesystemType}"
+                                  Classes="fluent-text-secondary"
+                                  FontSize="10"
+                                  IsVisible="{Binding FilesystemType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  IsHitTestVisible="False"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <!-- Mounts Section -->
+        <Border Classes="sidebar-section">
+          <StackPanel>
+            <!-- Section Header -->
+            <Border Classes="sidebar-section-header" 
+                    PointerPressed="OnSectionHeaderClicked"
+                    Tag="Mounts">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" 
+                          Text="{Binding MountsSection.Icon}"
+                          FontSize="16" 
+                          Margin="0,0,8,0"/>
+                <TextBlock Grid.Column="1" 
+                          Text="{Binding MountsSection.Title}"
+                          Classes="fluent-text-header"/>
+                <TextBlock Grid.Column="2" 
+                          Text="▼"
+                          FontSize="12"
+                          Classes="fluent-text-secondary"/>
+              </Grid>
+            </Border>
+
+            <!-- Mounts Items -->
+            <StackPanel IsVisible="{Binding MountsSection.IsExpanded}"
+                       Margin="16,4,0,0"
+                       Spacing="2">
+              <ItemsControl ItemsSource="{Binding MountsSection.Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SidebarItemViewModel">
+                    <Button Classes="sidebar-item"
+                           Click="OnItemButtonClicked"
+                           Tag="{Binding}"
+                           Background="Transparent"
+                           BorderThickness="0"
+                           Padding="0"
+                           Cursor="Hand"
+                           ContextMenu="{StaticResource SidebarItemContextMenu}"
+                           PointerPressed="OnItemPointerPressed">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2" IsHitTestVisible="False">
+                        <TextBlock Grid.Column="0" 
+                                  Text="{Binding Icon}"
+                                  FontSize="14"
+                                  Margin="0,0,8,0"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="1" 
+                                  Text="{Binding Name}"
+                                  Classes="fluent-text"
+                                  TextTrimming="CharacterEllipsis"
+                                  IsHitTestVisible="False"/>
+                        <TextBlock Grid.Column="2" 
+                                  Text="{Binding FilesystemType}"
+                                  Classes="fluent-text-secondary"
+                                  FontSize="10"
+                                  IsVisible="{Binding FilesystemType, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  IsHitTestVisible="False"/>
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+
+  </Border>
+</UserControl>

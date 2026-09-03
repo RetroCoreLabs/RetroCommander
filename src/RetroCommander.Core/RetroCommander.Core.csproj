@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>RetroCommander.Core</AssemblyName>
+    <RootNamespace>RetroCommander.Core</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RetroIO.Storage.Core" />
+    <PackageReference Include="RetroIO.Storage.Local" />
+    <PackageReference Include="RetroIO.Storage.Ndfs" />
+    <PackageReference Include="RetroIO.Storage.Azure" />
+    <PackageReference Include="RetroIO.Protocols.Tnfs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+  </ItemGroup>
+
+</Project>

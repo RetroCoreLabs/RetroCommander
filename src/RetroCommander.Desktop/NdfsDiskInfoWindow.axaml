@@ -1,0 +1,268 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="760"
+        x:Class="RetroCommander.Desktop.NdfsDiskInfoWindow"
+        Title="NDFS Disk Information"
+        Width="640" Height="760"
+        MinWidth="520" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,10,0,3"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="20,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="5,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.UserCol">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+        <Style Selector="TextBlock.UserHeader">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource FluentBackgroundPrimaryBrush}" RowDefinitions="*,Auto,Auto">
+        <!-- Content: tabbed — Overview + Initial Commands -->
+        <TabControl Grid.Row="0" Padding="0" Margin="4,4,4,0">
+
+            <!-- ===== Overview tab (volume / boot / bitmap / extended-info / users) ===== -->
+            <TabItem Header="Overview">
+                <ScrollViewer Padding="14">
+            <StackPanel Spacing="3">
+
+                <!-- Volume -->
+                <TextBlock Text="📀 Volume" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Directory Name:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DirNameText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Disk Type:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="DiskTypeText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Image Path:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="ImagePathText" Classes="Value"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="File Size:" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="FileSizeText" Classes="Value"/>
+                </Grid>
+
+                <!-- Boot -->
+                <TextBlock Text="🚀 Boot Sector" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Boot Format:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="BootFormatText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Boot Controller:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="BootControllerText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Bootable:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="BootableText" Classes="Value"/>
+                </Grid>
+
+                <!-- Allocation / Bitmap -->
+                <TextBlock Text="🧮 Allocation (Bitmap)" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Used Blocks:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="UsedBlocksText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Free Blocks:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="FreeBlocksText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Bitmap Covers:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="BitmapCoversText" Classes="Value"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Allocatable Up To:" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="CeilingText" Classes="Value"/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Bit File Size:" Classes="Label"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Name="BitFileSizeText" Classes="Value"/>
+                </Grid>
+
+                <!-- Visual allocation map: one pixel per page, left-to-right, top-to-bottom.
+                     Mirrors the text-UI RetroCommander's bit-file window (which drew the same map
+                     with Braille glyphs). -->
+                <TextBlock Text="Allocation map (1 pixel = 1 page):" Classes="Label" Margin="20,6,0,2"/>
+                <Border BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1"
+                        CornerRadius="4" Margin="20,0,0,0" Padding="4"
+                        HorizontalAlignment="Left">
+                    <Image Name="BitmapImage"
+                           Width="512"
+                           RenderOptions.BitmapInterpolationMode="None"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Left"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="14" Margin="20,4,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Border Width="12" Height="12" Background="#3A7BD5" CornerRadius="2"/>
+                        <TextBlock Text="Used" Classes="Label" Margin="0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Border Width="12" Height="12" Background="#FFFFFF" CornerRadius="2"
+                                BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1"/>
+                        <TextBlock Text="Free" Classes="Label" Margin="0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Border Width="12" Height="12" Background="#7A7A7A" CornerRadius="2"/>
+                        <TextBlock Text="Beyond capacity (unreachable)" Classes="Label" Margin="0"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Name="BitmapUnavailableText" Text="Allocation map unavailable."
+                           Classes="Label" IsVisible="False"/>
+
+                <!-- Extended Info / System -->
+                <TextBlock Text="🖥️ Extended Info" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Checksum:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="ChecksumText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Owning System Number:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="CpuSystemNumberText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Entered / In Use:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="EnteredText" Classes="Value"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Flag Word:" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="FlagWordText" Classes="Value"/>
+                </Grid>
+
+                <!-- Users -->
+                <TextBlock Text="👥 Users" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="60,160,110,110,110,90" Margin="20,2,0,2">
+                    <TextBlock Grid.Column="0" Text="Index" Classes="UserHeader"/>
+                    <TextBlock Grid.Column="1" Text="Name" Classes="UserHeader"/>
+                    <TextBlock Grid.Column="2" Text="Reserved" Classes="UserHeader"/>
+                    <TextBlock Grid.Column="3" Text="Used" Classes="UserHeader"/>
+                    <TextBlock Grid.Column="4" Text="Remaining" Classes="UserHeader"/>
+                    <TextBlock Grid.Column="5" Text="Enters" Classes="UserHeader"/>
+                </Grid>
+                <Border BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1" CornerRadius="4" Margin="20,0,0,0">
+                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl Name="UsersList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="60,160,110,110,110,90" Margin="4,2">
+                                        <TextBlock Grid.Column="0" Text="{Binding UserIndex}" Classes="UserCol"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding UserName}" Classes="UserCol"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding PagesReserved}" Classes="UserCol"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding PagesUsed}" Classes="UserCol"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding PagesRemaining}" Classes="UserCol"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding EnterCount}" Classes="UserCol"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+                <TextBlock Name="NoUsersText" Text="No users." Classes="Label" IsVisible="False"/>
+
+            </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ===== Initial Commands tab (SINTRAN III initial-command buffer) ===== -->
+            <TabItem Header="Initial Commands">
+                <Grid Margin="14" RowDefinitions="Auto,Auto,*,Auto,Auto">
+
+                    <!-- Explanation -->
+                    <StackPanel Grid.Row="0" Spacing="3">
+                        <TextBlock Text="⌨️ SINTRAN Initial Commands" Classes="SectionHeader" Margin="0,0,0,3"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                                   Text="These commands run first at every restart, exactly as '@LIST-INITIAL-COMMANDS' prints them. The buffer has no file form — it lives at kernel symbol INIBU inside the SINTRAN command segment, whose disk image is stored in (SYSTEM)SEGFIL0:DATA."/>
+                        <TextBlock Name="InitCmdInfoText" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Foreground="{DynamicResource FluentTextSecondaryBrush}" FontSize="11"/>
+                    </StackPanel>
+
+                    <!-- Editor label -->
+                    <TextBlock Grid.Row="1" Text="One command per line (upper-cased on save; a single quote is not allowed):"
+                               Classes="Label" Margin="0,10,0,3"/>
+
+                    <!-- Editable command list: one command per line -->
+                    <TextBox Grid.Row="2" Name="InitCmdEditor"
+                             AcceptsReturn="True" TextWrapping="NoWrap"
+                             FontFamily="Consolas,Menlo,monospace"
+                             VerticalContentAlignment="Top"
+                             VerticalAlignment="Stretch"
+                             MinHeight="180"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             Watermark="ENTER-DIR,,DI-75-1,0&#10;SET-AVAIL&#10;CC READY"/>
+
+                    <!-- Message shown when there is no locatable buffer -->
+                    <Border Grid.Row="2" Name="InitCmdUnavailablePanel" IsVisible="False"
+                            Background="{DynamicResource FluentWarningBackgroundBrush}"
+                            BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="10"
+                            VerticalAlignment="Top">
+                        <TextBlock Name="InitCmdUnavailableText" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                   Text="No SINTRAN initial-command buffer found. This is not a SINTRAN system pack (no SEGFIL0), or the SINTRAN version is unrecognised."/>
+                    </Border>
+
+                    <!-- Action buttons -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0"
+                                HorizontalAlignment="Right">
+                        <Button Name="InitCmdReloadButton" Content="↺ Reload"
+                                Click="OnInitCmdReloadClick" Classes="dialog-secondary"/>
+                        <Button Name="InitCmdSaveButton" Content="💾 Save to Disk"
+                                Click="OnInitCmdSaveClick" Classes="dialog-primary"/>
+                    </StackPanel>
+
+                    <!-- Status line -->
+                    <TextBlock Grid.Row="4" Name="InitCmdStatusText" Margin="0,6,0,0"
+                               Foreground="{DynamicResource FluentTextSecondaryBrush}" TextWrapping="Wrap"/>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- Actions -->
+        <Border Grid.Row="1" Classes="dialog-footer">
+            <StackPanel Spacing="8">
+                <!-- Read-only notice -->
+                <Border Name="ReadOnlyNotice"
+                        Background="{DynamicResource FluentWarningBackgroundBrush}"
+                        BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" IsVisible="False">
+                    <TextBlock Text="⚠️ This volume is mounted read-only. Re-mount read-write to rename or clear the entered flag."
+                               Foreground="{DynamicResource FluentTextPrimaryBrush}" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Rename row -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" Text="Rename volume:" VerticalAlignment="Center"
+                               Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                    <TextBox Grid.Column="1" Name="RenameTextBox" MaxLength="16"
+                             Watermark="New directory name (max 16 chars)"/>
+                    <Button Grid.Column="2" Name="RenameButton" Content="Rename" Click="OnRenameClick"
+                            Classes="dialog-secondary"/>
+                </Grid>
+
+                <!-- Clear entered row -->
+                <Grid ColumnDefinitions="*,Auto" Name="ClearEnteredRow">
+                    <TextBlock Grid.Column="0" Name="EnteredByText" VerticalAlignment="Center"
+                               Foreground="{DynamicResource FluentTextPrimaryBrush}" TextWrapping="Wrap"/>
+                    <Button Grid.Column="1" Name="ClearEnteredButton" Content="🔓 Clear Entered Directory"
+                            Click="OnClearEnteredClick" Classes="dialog-secondary"/>
+                </Grid>
+
+                <!-- Status line -->
+                <TextBlock Name="StatusText" Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Classes="dialog-footer">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Close" Click="OnCloseClick" Classes="dialog-primary"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

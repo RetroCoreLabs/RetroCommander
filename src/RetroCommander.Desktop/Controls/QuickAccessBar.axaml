@@ -1,0 +1,172 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:RetroCommander.Desktop.ViewModels"
+             xmlns:fluentIcons="using:FluentIcons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="34"
+             x:Class="RetroCommander.Desktop.Controls.QuickAccessBar"
+             x:DataType="vm:QuickAccessBarViewModel">
+
+  <!-- Unified application toolbar: navigation + drive/folder hot-links + Mounts/Recents. -->
+  <Border Classes="app-toolbar" Height="38">
+
+    <Grid ColumnDefinitions="Auto,*,Auto" Margin="8,4">
+
+      <!-- Navigation + Drive Buttons -->
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="2">
+        <!-- Go back (raises BackRequested; navigation history lives in MainWindow) -->
+        <Button x:Name="BackButton"
+                Classes="toolbar-button"
+                Click="OnBackClicked"
+                Width="32" Padding="4,0"
+                ToolTip.Tip="Go back">
+          <fluentIcons:SymbolIcon Symbol="ArrowLeft" FontSize="16"/>
+        </Button>
+
+        <!-- Drive / folder hot-links removed: they duplicate the sidebar (This PC + User Folders). -->
+        <Border Classes="toolbar-divider"/>
+      </StackPanel>
+
+      <!-- Address bar for the ACTIVE panel: shows its current path; type a path and press
+           Enter to navigate. Fills the centre of the toolbar. -->
+      <TextBox Grid.Column="1"
+               x:Name="AddressBox"
+               Classes="fluent-textbox"
+               Watermark="Path — type and press Enter to navigate"
+               VerticalAlignment="Center"
+               Margin="8,0"
+               KeyDown="OnAddressKeyDown"/>
+
+      <!-- Dropdown Buttons -->
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+        <Border Classes="toolbar-divider"/>
+        <!-- Mounts Dropdown -->
+        <Button Classes="toolbar-button"
+               x:Name="MountsButton"
+               ToolTip.Tip="Recent mounts and virtual filesystems">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Mounts"/>
+            <TextBlock Grid.Column="1" Text="▼" FontSize="10" Margin="4,0,0,0"/>
+          </Grid>
+          <Button.Flyout>
+            <Flyout Placement="Bottom">
+              <Border Background="{DynamicResource FluentBackgroundSecondaryBrush}"
+                      BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource FluentCornerRadius}"
+                      MaxHeight="300"
+                      Width="250">
+                <ScrollViewer>
+                  <StackPanel Margin="8" Spacing="2">
+                    <TextBlock Text="Recent Mounts" 
+                              Classes="fluent-text-header"
+                              Margin="0,0,0,8"/>
+                    
+                    <ItemsControl ItemsSource="{Binding MountItems}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:QuickAccessItemViewModel">
+                          <Border Classes="quick-access-item"
+                                 PointerPressed="OnMountItemClicked"
+                                 Tag="{Binding Path}"
+                                 ToolTip.Tip="{Binding Tooltip}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2">
+                              <TextBlock Grid.Column="0" 
+                                        Text="{Binding Icon}"
+                                        FontSize="14"
+                                        Margin="0,0,8,0"/>
+                              <TextBlock Grid.Column="1" 
+                                        Text="{Binding DisplayName}"
+                                        Classes="fluent-text"
+                                        TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Grid.Column="2" 
+                                        Text="{Binding FilesystemType}"
+                                        Classes="fluent-text-secondary"
+                                        FontSize="10"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Separator Margin="0,8"/>
+
+                    <Button Classes="fluent-button-primary"
+                           Content="Mount New..."
+                           Click="OnMountNewClicked"
+                           HorizontalAlignment="Stretch"
+                           Margin="0,4"/>
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <!-- Recents Dropdown -->
+        <Button Classes="toolbar-button"
+               x:Name="RecentsButton"
+               ToolTip.Tip="Recently visited locations">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Recents"/>
+            <TextBlock Grid.Column="1" Text="▼" FontSize="10" Margin="4,0,0,0"/>
+          </Grid>
+          <Button.Flyout>
+            <Flyout Placement="Bottom">
+              <Border Background="{DynamicResource FluentBackgroundSecondaryBrush}"
+                      BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                      BorderThickness="1"
+                      CornerRadius="{DynamicResource FluentCornerRadius}"
+                      MaxHeight="300"
+                      Width="250">
+                <ScrollViewer>
+                  <StackPanel Margin="8" Spacing="2">
+                    <TextBlock Text="Recent Locations" 
+                              Classes="fluent-text-header"
+                              Margin="0,0,0,8"/>
+                    
+                    <ItemsControl ItemsSource="{Binding RecentItems}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:QuickAccessItemViewModel">
+                          <Border Classes="quick-access-item"
+                                 PointerPressed="OnRecentItemClicked"
+                                 Tag="{Binding Path}"
+                                 ToolTip.Tip="{Binding Tooltip}">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2">
+                              <TextBlock Grid.Column="0" 
+                                        Text="{Binding Icon}"
+                                        FontSize="14"
+                                        Margin="0,0,8,0"/>
+                              <TextBlock Grid.Column="1" 
+                                        Text="{Binding DisplayName}"
+                                        Classes="fluent-text"
+                                        TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Grid.Column="2" 
+                                        Text="{Binding LastAccessed, StringFormat='{}{0:HH:mm}'}"
+                                        Classes="fluent-text-secondary"
+                                        FontSize="10"/>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Separator Margin="0,8"/>
+
+                    <Button Classes="fluent-button"
+                           Content="Clear Recents"
+                           Click="OnClearRecentsClicked"
+                           HorizontalAlignment="Stretch"
+                           Margin="0,4"/>
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+      </StackPanel>
+
+    </Grid>
+
+  </Border>
+</UserControl>

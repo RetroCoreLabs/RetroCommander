@@ -1,0 +1,152 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="560"
+        x:Class="RetroCommander.Desktop.NdfsUserInfoWindow"
+        Title="NDFS User Information"
+        Width="520" Height="560"
+        MinWidth="440" MinHeight="440"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,10,0,3"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="20,2,0,2"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="5,2,0,2"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource FluentBackgroundPrimaryBrush}" RowDefinitions="*,Auto,Auto">
+        <!-- Content -->
+        <ScrollViewer Grid.Row="0" Padding="14">
+            <StackPanel Spacing="2">
+
+                <!-- Identity -->
+                <TextBlock Text="👤 User" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="User Name:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="UserNameText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="User Index:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="UserIndexText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Directory Index:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="DirectoryIndexText" Classes="Value"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Flag (UF):" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="FlagText" Classes="Value"
+                               FontFamily="Consolas,Menlo,monospace"/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Enter Count (logins):" Classes="Label"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Name="EnterCountText" Classes="Value"/>
+                </Grid>
+
+                <!-- Quota -->
+                <TextBlock Text="🧮 Quota" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Pages Reserved:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="PagesReservedText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Pages Used:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="PagesUsedText" Classes="Value"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Pages Remaining:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="PagesRemainingText" Classes="Value"/>
+                </Grid>
+
+                <!-- Dates -->
+                <TextBlock Text="📅 Dates" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Created:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DateCreatedText" Classes="Value"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Last Entered:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="LastEnteredText" Classes="Value"/>
+                </Grid>
+
+                <!-- Authentication -->
+                <TextBlock Text="🔑 Password" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Password (decimal):" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="PasswordDecText" Classes="Value"
+                               FontFamily="Consolas,Menlo,monospace"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Password (octal):" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="PasswordOctText" Classes="Value"
+                               FontFamily="Consolas,Menlo,monospace"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="State:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="PasswordStateText" Classes="Value"/>
+                </Grid>
+
+                <!-- Default access -->
+                <TextBlock Text="🛡️ Default File Access" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Default Access Bits:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DefaultAccessText" Classes="Value"
+                               FontFamily="Consolas,Menlo,monospace"/>
+                </Grid>
+
+                <!-- Friends -->
+                <TextBlock Text="🤝 Friends" Classes="SectionHeader"/>
+                <ItemsControl Name="FriendsList" Margin="20,0,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="60,180,*" Margin="0,1">
+                                <TextBlock Grid.Column="0" Text="{Binding Index}"
+                                           Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}"
+                                           Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Permissions}"
+                                           FontFamily="Consolas,Menlo,monospace"
+                                           Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Name="NoFriendsText" Text="No friends defined." Classes="Label" IsVisible="False"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Actions -->
+        <Border Grid.Row="1" Classes="dialog-footer">
+            <StackPanel Spacing="8">
+                <!-- Read-only notice -->
+                <Border Name="ReadOnlyNotice"
+                        Background="{DynamicResource FluentWarningBackgroundBrush}"
+                        BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="8" IsVisible="False">
+                    <TextBlock Text="⚠️ This volume is mounted read-only. Re-mount read-write to reset the password."
+                               Foreground="{DynamicResource FluentTextPrimaryBrush}" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- Reset password row -->
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" TextWrapping="Wrap"
+                               Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                               Text="Reset clears the password to 0 (no password) — the account can then be entered without one."/>
+                    <Button Grid.Column="1" Name="ResetPasswordButton" Content="🔓 Reset Password"
+                            Click="OnResetPasswordClick" Classes="dialog-secondary"/>
+                </Grid>
+
+                <!-- Status line -->
+                <TextBlock Name="StatusText" Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                           TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Footer -->
+        <Border Grid.Row="2" Classes="dialog-footer">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+                <Button Content="Close" Click="OnCloseClick" Classes="dialog-primary"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

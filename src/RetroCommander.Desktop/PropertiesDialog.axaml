@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.PropertiesDialog"
+        Title="Properties"
+        Width="480" Height="560"
+        MinWidth="380" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Name="TitleText" Text="Properties" Classes="fluent-text-header" Margin="0,0,0,4"/>
+            <TextBlock Name="NameText" Text="" Classes="fluent-text-secondary" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Body -->
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="16">
+
+                <!-- Standard section -->
+                <Border Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="General" Classes="fluent-text-header"/>
+                        <Grid Name="StandardGrid" ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="12"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Filesystem-specific details -->
+                <Border Name="DetailsBorder" Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="8">
+                        <TextBlock Name="DetailsHeaderText" Text="Filesystem Details" Classes="fluent-text-header"/>
+                        <Grid Name="DetailsGrid" ColumnDefinitions="Auto,*" RowSpacing="6" ColumnSpacing="12"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Spacing="12" Margin="0,16,0,0">
+            <Button Content="Close" Classes="dialog-primary"
+                    Click="OnCloseClick" IsDefault="True" IsCancel="True"/>
+        </StackPanel>
+
+    </Grid>
+</Window>

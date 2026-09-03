@@ -1,0 +1,173 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.MountDialog"
+        Title="Mount Filesystem"
+        Width="600" Height="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Mount Filesystem" Classes="fluent-text-header" Margin="0,0,0,8"/>
+            <TextBlock Text="Select filesystem type and enter path to mount:" Classes="fluent-text-secondary"/>
+        </StackPanel>
+
+        <!-- Main Content -->
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="16">
+                
+                <!-- Auto-Detection Banner -->
+                <Border Name="DetectionBanner" Classes="success-banner" IsVisible="False">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="✅" FontSize="16"/>
+                        <StackPanel>
+                            <TextBlock Text="Filesystem Type Detected" Classes="fluent-text-header"/>
+                            <TextBlock Name="DetectedTypeText" Classes="fluent-text-secondary"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Warning Banner -->
+                <Border Name="WarningBanner" Classes="warning-banner" IsVisible="False">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ Auto-detection failed" Classes="fluent-text-header"/>
+                        <TextBlock Text="Please manually select the filesystem type below." Classes="fluent-text-secondary"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Filesystem Type Selection -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Filesystem Type:" Classes="fluent-text"/>
+                    <ComboBox Name="FileSystemTypeCombo" Classes="fluent-combobox" SelectedIndex="0">
+                        <ComboBoxItem Content="Windows Folder (file:///)" />
+                        <ComboBoxItem Content="FTP Server (ftp://)" />
+                        <ComboBoxItem Content="FTPS Server (ftps://)" />
+                        <ComboBoxItem Content="SFTP/SSH Server (sftp://)" />
+                        <ComboBoxItem Content="TNFS Server (tnfs://)" />
+                        <ComboBoxItem Content="NDFS Disk Image (ndfs://)" />
+                        <ComboBoxItem Content="D64 Disk Image (d64://)" />
+                        <ComboBoxItem Content="D71 Disk Image (d71://)" />
+                        <ComboBoxItem Content="D81 Disk Image (d81://)" />
+                        <ComboBoxItem Content="BSD Disk Image (bsd://)" />
+                        <ComboBoxItem Content="ZIP Archive (zip://)" />
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Path Selection -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Path:" Classes="fluent-text"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Name="PathTextBox" Grid.Column="0" Classes="fluent-textbox" Watermark="Enter path or browse..." />
+                        <Button Grid.Column="1" Content="Browse..." Classes="fluent-button" Click="OnBrowseClick" Margin="8,0,0,0" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Image Information -->
+                <StackPanel Name="ImageInfoPanel" IsVisible="False" Spacing="8">
+                    <TextBlock Text="Image Information:" Classes="fluent-text"/>
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Size:" Classes="fluent-text-secondary"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Name="ImageSizeText" Classes="fluent-text"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Label:" Classes="fluent-text-secondary"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Name="ImageLabelText" Classes="fluent-text"/>
+                    </Grid>
+                </StackPanel>
+
+                <!-- NDFS Information Panel -->
+                <Border Name="NdfsInfoPanel" IsVisible="False" Classes="info-panel" Padding="12" CornerRadius="8" Background="{DynamicResource FluentSurfaceAltBrush}">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="📀 NDFS Filesystem Information" Classes="fluent-text-header"/>
+
+                        <!-- Master Block Info -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Master Block" Classes="fluent-text-subheader"/>
+                            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Directory Name:" Classes="fluent-text-secondary"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Name="NdfsDirectoryName" Classes="fluent-text"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Total Pages:" Classes="fluent-text-secondary"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Name="NdfsTotalPages" Classes="fluent-text"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Free Pages:" Classes="fluent-text-secondary"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Name="NdfsFreePages" Classes="fluent-text"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Bootable:" Classes="fluent-text-secondary"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Name="NdfsBootable" Classes="fluent-text"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Checksum Status:" Classes="fluent-text-secondary"/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" Name="NdfsChecksumStatus" Classes="fluent-text"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Users Info -->
+                        <StackPanel Name="NdfsUsersPanel" Spacing="4">
+                            <TextBlock Text="Users" Classes="fluent-text-subheader"/>
+                            <ScrollViewer MaxHeight="120" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl Name="NdfsUsersList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="150,*,*" Margin="0,2">
+                                                <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="fluent-text"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Quota}" Classes="fluent-text-secondary"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Used}" Classes="fluent-text-secondary"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+
+                        <!-- Extended Info (if available) -->
+                        <StackPanel Name="NdfsExtendedInfoPanel" IsVisible="False" Spacing="4">
+                            <TextBlock Text="Extended Master Block" Classes="fluent-text-subheader"/>
+                            <TextBlock Name="NdfsExtendedInfoText" TextWrapping="Wrap" Classes="fluent-text-secondary"/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
+
+                <!-- Partition Selection Panel -->
+                <StackPanel Name="PartitionPanel" IsVisible="False" Spacing="8">
+                    <TextBlock Text="Partition:" Classes="fluent-text"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <ComboBox Name="PartitionCombo" Grid.Column="0" Classes="fluent-combobox" IsEnabled="False">
+                            <ComboBoxItem Content="No partitions detected" />
+                        </ComboBox>
+                        <Button Grid.Column="1" Name="DetectPartitionsButton" Content="Detect" Classes="fluent-button" Click="OnDetectPartitionsClick" Margin="8,0,0,0" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- Mount Options -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Mount Options:" Classes="fluent-text"/>
+                    <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="16">
+                        <TextBlock Grid.Column="0" Text="Mode:" Classes="fluent-text-secondary"/>
+                        <ComboBox Grid.Column="1" Name="MountModeCombo" Classes="fluent-combobox">
+                            <ComboBoxItem Content="Read-Only" IsSelected="True"/>
+                            <ComboBoxItem Content="Read-Write"/>
+                        </ComboBox>
+                        <TextBlock Grid.Column="2" Text="Mount Point:" Classes="fluent-text-secondary"/>
+                        <TextBox Grid.Column="3" Name="MountPointTextBox" Classes="fluent-textbox" Text="/mnt/" />
+                    </Grid>
+                </StackPanel>
+
+                <!-- URN Preview -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Full URN:" Classes="fluent-text"/>
+                    <TextBox Name="UrnPreview" Classes="fluent-textbox" IsReadOnly="True" Background="{DynamicResource FluentSurfaceAltBrush}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12" Margin="0,16,0,0">
+            <Button Name="MountButton" Content="Mount" Classes="dialog-primary" Click="OnMountClick" IsDefault="True" />
+            <Button Name="CancelButton" Content="Cancel" Classes="dialog-secondary" Click="OnCancelClick" IsCancel="True" />
+        </StackPanel>
+
+    </Grid>
+</Window>

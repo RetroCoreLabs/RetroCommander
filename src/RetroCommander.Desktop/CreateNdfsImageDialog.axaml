@@ -1,0 +1,122 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.CreateNdfsImageDialog"
+        Title="Create New NDFS Disk Image"
+        Width="600"
+        MinWidth="520" MinHeight="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        SizeToContent="Height"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <!-- SizeToContent="Height" + no ScrollViewer: the window grows to fit all fields (and re-fits
+         when the Custom-size or Extended-info panels toggle), so nothing is ever clipped. A
+         ScrollViewer here would clamp the measured height and reintroduce the clipping. -->
+    <Grid RowDefinitions="Auto,Auto,Auto" Margin="15">
+        <TextBlock Grid.Row="0" Text="Create a new empty NDFS disk image"
+                   FontSize="14" FontWeight="Bold" Margin="0,0,0,15" />
+
+        <StackPanel Grid.Row="1" Spacing="12">
+                <!-- Template Selection -->
+                <TextBlock Text="Template:" FontWeight="SemiBold"/>
+                <ComboBox Name="TemplateCombo" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                    <ComboBoxItem Content="Floppy 360KB (154 pages, FLOMON format)" Tag="Floppy360KB"/>
+                    <ComboBoxItem Content="Floppy 1.2MB (616 pages, FLOMON format)" Tag="Floppy12MB"/>
+                    <ComboBoxItem Content="SMD 75MB Hard Disk (36,945 pages)" Tag="Smd75MB"/>
+                    <ComboBoxItem Content="Winchester 74MB Hard Disk (36,396 pages)" Tag="Winchester74MB"/>
+                    <ComboBoxItem Content="Custom Size..." Tag="Custom"/>
+                </ComboBox>
+
+                <!-- Custom Size (visible when Custom selected) -->
+                <StackPanel Name="CustomSizePanel" IsVisible="False" Spacing="8">
+                    <TextBlock Text="Custom NDFS Pages:" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBlueBrush}"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto">
+                        <NumericUpDown Name="CustomPagesInput" Grid.Column="0"
+                                       Minimum="100" Maximum="100000" Value="10000" Increment="100"
+                                       Watermark="Enter NDFS page count..."/>
+                        <TextBlock Grid.Column="1" Text="pages × 2KB = " VerticalAlignment="Center" Margin="10,0,5,0"/>
+                        <TextBlock Name="CustomSizePreview" Grid.Column="2" Text="19.5 MB"
+                                   VerticalAlignment="Center" FontWeight="Bold"/>
+                    </Grid>
+
+                    <TextBlock Text="Controller Type:" FontWeight="SemiBold" Foreground="{DynamicResource FluentAccentBlueBrush}"/>
+                    <ComboBox Name="ControllerTypeCombo" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                        <ComboBoxItem Content="SMD (3.94% overhead)" Tag="Smd"/>
+                        <ComboBoxItem Content="Winchester (~0% overhead)" Tag="Winchester"/>
+                        <ComboBoxItem Content="SCSI (5.93% overhead)" Tag="Scsi"/>
+                        <ComboBoxItem Content="Floppy (no overhead)" Tag="Floppy"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Directory Name -->
+                <TextBlock Text="Directory Name:" FontWeight="SemiBold"/>
+                <TextBox Name="DirectoryNameInput" Classes="fluent-textbox" MaxLength="15"
+                         Watermark="Enter disk name (max 15 chars)..." Text="EMPTY-DISK"/>
+                <TextBlock Text="Terminated with ' (ASCII 0x27) per NDFS spec"
+                           FontSize="11" Foreground="{DynamicResource FluentTextSecondaryBrush}" Margin="0,-8,0,0"/>
+
+                <!-- Boot Loader Selection -->
+                <TextBlock Text="Boot Loader:" FontWeight="SemiBold"/>
+                <ComboBox Name="BootLoaderCombo" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                    <ComboBoxItem Content="None (empty boot sector)" Tag="None"/>
+                    <ComboBoxItem Content="Floppy (FLOMON format)" Tag="Floppy"/>
+                    <ComboBoxItem Content="SMD Controller" Tag="Smd"/>
+                    <ComboBoxItem Content="Winchester Controller" Tag="Winchester"/>
+                    <ComboBoxItem Content="SCSI Controller" Tag="Scsi"/>
+                </ComboBox>
+
+                <!-- Extended Info (Hard Disks Only) -->
+                <StackPanel Name="ExtendedInfoPanel" Spacing="8">
+                    <CheckBox Name="IncludeExtendedInfoCheck" Content="Include Extended Info Block (hard disks only)"
+                              IsChecked="True"/>
+
+                    <StackPanel Name="ExtendedInfoFields" Spacing="8" Margin="20,0,0,0">
+                        <Grid ColumnDefinitions="150,*">
+                            <TextBlock Grid.Column="0" Text="System Number:" VerticalAlignment="Center"/>
+                            <NumericUpDown Name="SystemNumberInput" Grid.Column="1"
+                                           Minimum="0" Maximum="65535" Value="0"/>
+                        </Grid>
+                        <TextBlock Text="CPU serial number (e.g., 100, 102, 246)"
+                                   FontSize="11" Foreground="{DynamicResource FluentTextSecondaryBrush}" Margin="150,0,0,0"/>
+
+                        <Grid ColumnDefinitions="150,*">
+                            <TextBlock Grid.Column="0" Text="Flag Word:" VerticalAlignment="Center"/>
+                            <NumericUpDown Name="FlagWordInput" Grid.Column="1"
+                                           Minimum="0" Maximum="65535" Value="0"/>
+                        </Grid>
+                        <TextBlock Text="Reserved for future use (usually 0)"
+                                   FontSize="11" Foreground="{DynamicResource FluentTextSecondaryBrush}" Margin="150,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Output Path -->
+                <TextBlock Text="Output File:" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Name="OutputPathInput" Grid.Column="0" Classes="fluent-textbox"
+                             Watermark="Select output location..." IsReadOnly="True"/>
+                    <Button Grid.Column="1" Content="Browse..." Click="OnBrowseOutputClick"
+                            Classes="fluent-button" Margin="5,0,0,0" Padding="15,5"/>
+                </Grid>
+
+                <!-- Preview Information -->
+                <Border BorderBrush="{DynamicResource FluentBorderLightBrush}" BorderThickness="1" Background="{DynamicResource FluentSurfaceAltBrush}" Padding="10" Margin="0,10,0,0">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Image Preview:" FontWeight="Bold"/>
+                        <TextBlock Name="PreviewNdfsPages" Text="NDFS Pages: 154"/>
+                        <TextBlock Name="PreviewFileSize" Text="File Size: 315,392 bytes (0.30 MB)"/>
+                        <TextBlock Name="PreviewControllerType" Text="Controller: Floppy"/>
+                        <TextBlock Name="PreviewHasExtInfo" Text="Extended Info: No"/>
+                    </StackPanel>
+                </Border>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+            <Button Name="CreateButton" Content="Create Image" Click="OnCreateClick"
+                    IsDefault="True" Classes="dialog-primary"/>
+            <Button Content="Cancel" Click="OnCancelClick" IsCancel="True" Classes="dialog-secondary"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,197 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="600"
+        x:Class="RetroCommander.Desktop.NewImageDialog"
+        Title="New Disk Image"
+        Width="820" Height="600"
+        MinWidth="700" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TextBlock.GroupHeader">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="6,10,0,2"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- ===== Main area: format list (left) + options (right) ===== -->
+        <Grid Grid.Row="0" ColumnDefinitions="230,*">
+
+            <!-- Format catalogue -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource FluentBackgroundSecondaryBrush}"
+                    BorderBrush="{DynamicResource FluentBorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer>
+                    <StackPanel Margin="8,12,8,12">
+                        <TextBlock Text="FORMAT" Classes="GroupHeader" Margin="6,0,0,6"/>
+
+                        <TextBlock Text="Norsk Data" Classes="GroupHeader"/>
+                        <ListBox Name="NdfsList" SelectionMode="Single" Background="Transparent"
+                                 BorderThickness="0" SelectionChanged="OnFormatSelected">
+                            <ListBoxItem Tag="NDFS" Content="NDFS Disk"/>
+                        </ListBox>
+
+                        <TextBlock Text="PC" Classes="GroupHeader"/>
+                        <ListBox Name="PcList" SelectionMode="Single" Background="Transparent"
+                                 BorderThickness="0" SelectionChanged="OnFormatSelected">
+                            <ListBoxItem Tag="PC" Content="PC Disk (FAT12/16)"/>
+                        </ListBox>
+
+                        <TextBlock Text="Commodore" Classes="GroupHeader"/>
+                        <ListBox Name="CbmList" SelectionMode="Single" Background="Transparent"
+                                 BorderThickness="0" SelectionChanged="OnFormatSelected">
+                            <ListBoxItem Tag="D64" Content="D64 — 1541"/>
+                            <ListBoxItem Tag="D71" Content="D71 — 1571"/>
+                            <ListBoxItem Tag="D81" Content="D81 — 1581"/>
+                        </ListBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Options for the selected format -->
+            <ScrollViewer Grid.Column="1" Padding="18,14,18,14">
+                <StackPanel Spacing="10">
+
+                    <TextBlock Name="FormatTitle" Text="NDFS Disk" Classes="SectionHeader"/>
+
+                    <!-- === NDFS === -->
+                    <StackPanel Name="NdfsPanel" Spacing="8">
+                        <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                              ColumnSpacing="10" RowSpacing="8">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Drive:" Classes="Label"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="NdfsTemplateCombo"
+                                      HorizontalAlignment="Stretch" SelectionChanged="OnNdfsOptionChanged"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Custom pages:" Classes="Label"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="NdfsCustomPages"
+                                     Watermark="Page count (2048 bytes each)" IsVisible="False"
+                                     TextChanged="OnNdfsTextChanged"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Directory name:" Classes="Label"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="NdfsName" MaxLength="16"
+                                     Text="PACK-ONE" Watermark="Max 16 printable ASCII characters"
+                                     TextChanged="OnNdfsTextChanged"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Boot loader:" Classes="Label"/>
+                            <ComboBox Grid.Row="3" Grid.Column="1" Name="NdfsBootCombo"
+                                      HorizontalAlignment="Stretch" SelectionChanged="OnNdfsOptionChanged"/>
+                        </Grid>
+
+                        <CheckBox Name="NdfsExtInfoCheck" Content="Include extended info block"
+                                  IsChecked="True" IsCheckedChanged="OnNdfsOptionChanged"/>
+
+                        <Grid Name="NdfsExtFields" ColumnDefinitions="130,110,90,*"
+                              ColumnSpacing="10">
+                            <TextBlock Grid.Column="0" Text="System number:" Classes="Label"/>
+                            <TextBox Grid.Column="1" Name="NdfsSystemNumber" Text="0"
+                                     TextChanged="OnNdfsTextChanged"/>
+                            <TextBlock Grid.Column="2" Text="Flag word:" Classes="Label"/>
+                            <TextBox Grid.Column="3" Name="NdfsFlagWord" Text="0"
+                                     TextChanged="OnNdfsTextChanged"/>
+                        </Grid>
+
+                        <CheckBox Name="NdfsBlankCheck"
+                                  Content="Blank image — all 0x00, no boot sector, no name, no metadata"
+                                  IsCheckedChanged="OnNdfsOptionChanged"/>
+                        <TextBlock Name="NdfsBlankNote"
+                                   Text="A blank image is only a correctly-sized empty device. It is not a mountable NDFS volume and will not auto-mount."
+                                   Classes="Label" TextWrapping="Wrap" IsVisible="False"/>
+                    </StackPanel>
+
+                    <!-- === PC === -->
+                    <StackPanel Name="PcPanel" Spacing="8" IsVisible="False">
+                        <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto"
+                              ColumnSpacing="10" RowSpacing="8">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Media type:" Classes="Label"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" Name="PcMediaCombo"
+                                      HorizontalAlignment="Stretch" SelectionChanged="OnPcOptionChanged">
+                                <ComboBoxItem Content="Floppy"/>
+                                <ComboBoxItem Content="Hard disk"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Geometry:" Classes="Label"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" Name="PcGeometryCombo"
+                                      HorizontalAlignment="Stretch" SelectionChanged="OnPcOptionChanged"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Volume label:" Classes="Label"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Name="PcLabel" MaxLength="11"
+                                     Watermark="Max 11 characters (FAT limit)"
+                                     TextChanged="OnPcTextChanged"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- === Commodore === -->
+                    <StackPanel Name="CbmPanel" Spacing="8" IsVisible="False">
+                        <Grid ColumnDefinitions="130,*,90,80" RowDefinitions="Auto"
+                              ColumnSpacing="10">
+                            <TextBlock Grid.Column="0" Text="Disk name:" Classes="Label"/>
+                            <TextBox Grid.Column="1" Name="CbmName" MaxLength="16" Text="BLANK"
+                                     Watermark="Max 16 characters" TextChanged="OnCbmTextChanged"/>
+                            <TextBlock Grid.Column="2" Text="Disk ID:" Classes="Label"/>
+                            <TextBox Grid.Column="3" Name="CbmId" MaxLength="2" Text="01"
+                                     TextChanged="OnCbmTextChanged"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- === Preview (all formats) === -->
+                    <Border BorderBrush="{DynamicResource FluentBorderBrush}" BorderThickness="1"
+                            CornerRadius="4" Padding="12" Margin="0,6,0,0">
+                        <StackPanel Spacing="3">
+                            <TextBlock Text="Preview" Classes="GroupHeader" Margin="0,0,0,4"/>
+                            <TextBlock Name="PreviewText" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- === Output (all formats) === -->
+                    <Grid ColumnDefinitions="130,*,Auto" ColumnSpacing="10" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="0" Text="Output file:" Classes="Label"/>
+                        <TextBox Grid.Column="1" Name="OutputPath" Watermark="Choose where to save..."
+                                 TextChanged="OnOutputChanged"/>
+                        <Button Grid.Column="2" Content="Browse..." Click="OnBrowseClick"/>
+                    </Grid>
+
+                    <!-- Validation message -->
+                    <TextBlock Name="ValidationText" TextWrapping="Wrap" IsVisible="False"
+                               Foreground="{DynamicResource FluentWarningBorderBrush}"/>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ===== Footer ===== -->
+        <Border Grid.Row="1" Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <CheckBox Grid.Column="0" Name="MountAfterCreate"
+                          Content="Mount after create" IsChecked="True"
+                          VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Name="CreateButton" Content="Create" Click="OnCreateClick"
+                            Classes="dialog-primary" IsDefault="True"/>
+                    <Button Content="Cancel" Click="OnCancelClick"
+                            Classes="dialog-secondary" IsCancel="True"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

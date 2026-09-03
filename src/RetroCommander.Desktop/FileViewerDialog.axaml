@@ -1,0 +1,127 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+        x:Class="RetroCommander.Desktop.FileViewerDialog"
+        Title="File Viewer"
+        Width="900" Height="700"
+        MinWidth="600" MinHeight="400"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Window.Styles>
+        <Style Selector="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,15,0"/>
+        </Style>
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.Info">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <!-- Keep the viewer's surface consistent across all interaction states -->
+        <Style Selector="TextBox.Viewer">
+            <Setter Property="Background" Value="{DynamicResource FluentBackgroundSecondaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource FluentSelectionHighlightBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="TextBox.Viewer:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource FluentBackgroundSecondaryBrush}"/>
+        </Style>
+        <Style Selector="TextBox.Viewer:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource FluentBackgroundSecondaryBrush}"/>
+        </Style>
+        <Style Selector="TextBox.Viewer:focus-within /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource FluentBackgroundSecondaryBrush}"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource FluentBackgroundPrimaryBrush}" RowDefinitions="Auto,*,Auto">
+        <!-- Toolbar -->
+        <Border Grid.Row="0" Background="{DynamicResource FluentSurfaceAltBrush}" BorderBrush="{DynamicResource FluentBorderLightBrush}" BorderThickness="0,0,0,1" Padding="7">
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <!-- View Mode -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="View Mode:" Foreground="{DynamicResource FluentTextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <RadioButton Name="TextModeRadio"
+                                 Content="Text"
+                                 GroupName="ViewMode"
+                                 IsChecked="True"
+                                 Click="OnTextModeClick"/>
+                    <RadioButton Name="HexModeRadio"
+                                 Content="Hex"
+                                 GroupName="ViewMode"
+                                 Click="OnHexModeClick"/>
+                </StackPanel>
+
+                <!-- Text Mode Options -->
+                <StackPanel Grid.Column="1"
+                            Name="TextOptionsPanel"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="20,0,0,0">
+                    <CheckBox Name="ClearBit7CheckBox"
+                              Content="Clear Bit 7 (NDFS parity)"
+                              IsChecked="False"
+                              Checked="OnClearBit7Changed"
+                              Unchecked="OnClearBit7Changed"
+                              ToolTip.Tip="Strip high bit from each byte - useful for NDFS files with parity"/>
+                    <CheckBox Name="WordWrapCheckBox"
+                              Content="Word Wrap"
+                              IsChecked="True"
+                              Margin="15,0,0,0"
+                              Checked="OnWordWrapChanged"
+                              Unchecked="OnWordWrapChanged"/>
+                </StackPanel>
+
+                <!-- File Info -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Name="FileSizeText" Classes="Info" Margin="0,0,15,0"/>
+                    <TextBlock Name="EncodingText" Classes="Info"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Content Area - Single TextBox.
+             FontFamily/FontSize are applied from UiSettings (the configurable viewer font). -->
+        <TextBox Name="ContentViewer"
+                 Grid.Row="1"
+                 Classes="Viewer"
+                 IsReadOnly="True"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 Padding="8"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+
+        <!-- Status Bar (accent-coloured; white text reads on the accent in every theme) -->
+        <Border Grid.Row="2" Background="{DynamicResource FluentAccentBlueBrush}" Padding="8,4">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Name="FileNameText"
+                           Grid.Column="0"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock Name="PositionText"
+                           Grid.Column="1"
+                           Foreground="White"
+                           VerticalAlignment="Center"
+                           Margin="20,0"/>
+                <Button Grid.Column="2"
+                        Content="Close"
+                        Click="OnCloseClick"
+                        Classes="fluent-button"
+                        Padding="12,4"
+                        MinWidth="80"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,291 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="600"
+        x:Class="RetroCommander.Desktop.GenericMountDialog"
+        Title="Mount Disk Image"
+        Width="800"
+        MinWidth="700" MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        SizeToContent="Height"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <!-- All colours come from the app theme (RetroCommander.Desktop.Themes.ThemeManager) so this
+         dialog follows Light / Dark / Solarized / Nord / High Contrast like the rest of the UI. -->
+    <Window.Styles>
+        <!-- Tabs use the shared modern TabItem style from FluentTheme.axaml. -->
+
+        <!-- Section / label / value text -->
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,8,0,3"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="20,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="5,1,0,1"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="*,Auto">
+        <!-- Content Area with Tabs -->
+        <TabControl Grid.Row="0" Padding="0">
+            <!-- Mount Tab -->
+            <TabItem Header="📁 Mount">
+                <!-- No ScrollViewer here: a ScrollViewer reports a clamped desired height under
+                     SizeToContent, which made the window measure short and clip the URN preview.
+                     The Mount tab's content drives the window height directly instead. The Details
+                     tab keeps its ScrollViewer because its metadata list can be long. -->
+                <StackPanel Margin="16" Spacing="8">
+                        <!-- File Information -->
+                        <TextBlock Text="📁 File Information" Classes="SectionHeader"/>
+                        <Grid ColumnDefinitions="150,*">
+                            <TextBlock Grid.Column="0" Text="File Path:" Classes="Label"/>
+                            <TextBlock Grid.Column="1" Name="FilePathText" Classes="Value" TextWrapping="Wrap"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="150,*">
+                            <TextBlock Grid.Column="0" Text="File Size:" Classes="Label"/>
+                            <TextBlock Grid.Column="1" Name="FileSizeText" Classes="Value"/>
+                        </Grid>
+
+                        <!-- Detection Results -->
+                        <TextBlock Text="🔍 Detection Results" Classes="SectionHeader"/>
+                        <Border Background="{DynamicResource FluentSurfaceAltBrush}"
+                                BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10" Margin="0,2">
+                            <StackPanel Spacing="5">
+                                <TextBlock Name="DetectionStatusText"
+                                           Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                                           TextWrapping="Wrap"/>
+                                <ItemsControl Name="DetectionConfidenceList" Margin="10,5,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="200,*,Auto">
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{Binding FilesystemType}"
+                                                           Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                                                <ProgressBar Grid.Column="1"
+                                                             Value="{Binding Confidence}"
+                                                             Maximum="1"
+                                                             Margin="10,0" Height="16"
+                                                             Foreground="{Binding ConfidenceColor}"/>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding ConfidenceText}"
+                                                           Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                                                           Margin="10,0,0,0" MinWidth="60"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Warning Panel (if detection failed or uncertain) -->
+                        <Border Name="WarningPanel"
+                                Background="{DynamicResource FluentErrorBackgroundBrush}"
+                                BorderBrush="{DynamicResource FluentErrorBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10"
+                                Margin="0,6,0,0"
+                                IsVisible="False">
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="⚠️ Detection Warning"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource FluentErrorTextBrush}"/>
+                                <TextBlock Name="WarningTextBlock"
+                                           Foreground="{DynamicResource FluentErrorTextBrush}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Filesystem Type Selection -->
+                        <TextBlock Text="💾 Filesystem Type" Classes="SectionHeader"/>
+                        <ComboBox Name="FilesystemTypeCombo"
+                                  Classes="fluent-combobox"
+                                  HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnFilesystemTypeChanged"
+                                  Margin="0,2">
+                            <ComboBoxItem Content="Auto-detect (recommended)" Tag="auto"/>
+                            <ComboBoxItem Content="BSD V7 Filesystem (bsd://)" Tag="bsd"/>
+                            <ComboBoxItem Content="BSD FFS/UFS Filesystem (ffs://)" Tag="ffs"/>
+                            <ComboBoxItem Content="NDFS Disk Image (ndfs://)" Tag="ndfs"/>
+                            <ComboBoxItem Content="Commodore D64 (d64://)" Tag="d64"/>
+                            <ComboBoxItem Content="Commodore D71 (d71://)" Tag="d71"/>
+                            <ComboBoxItem Content="Commodore D81 (d81://)" Tag="d81"/>
+                            <ComboBoxItem Content="Windows Folder (file:///)" Tag="file"/>
+                        </ComboBox>
+
+                        <!-- BSD Partition Selection -->
+                        <Border Name="BsdPartitionPanel"
+                                IsVisible="False"
+                                Background="{DynamicResource FluentSurfaceAltBrush}"
+                                BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10"
+                                Margin="0,4">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="🗂️ BSD Partition Selection" Classes="SectionHeader"/>
+                                <TextBlock Text="Select which partition to mount:"
+                                           Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                                <ComboBox Name="BsdPartitionCombo"
+                                          Classes="fluent-combobox"
+                                          HorizontalAlignment="Stretch"
+                                          SelectionChanged="OnPartitionChanged">
+                                    <ComboBoxItem Content="Detecting partitions..." IsEnabled="False"/>
+                                </ComboBox>
+                                <Button Name="DetectPartitionsButton"
+                                        Content="Detect Partitions"
+                                        Click="OnDetectPartitionsClick"
+                                        Classes="fluent-button"
+                                        HorizontalAlignment="Left"/>
+                                <TextBlock Name="PartitionInfoText"
+                                           Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           IsVisible="False"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- URN Preview -->
+                        <TextBlock Text="🔗 URN Preview" Classes="SectionHeader"/>
+                        <Border Background="{DynamicResource FluentSurfaceAltBrush}"
+                                BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10">
+                            <TextBlock Name="UrnPreviewText"
+                                       Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                       FontFamily="Consolas, Courier New, monospace"
+                                       TextWrapping="Wrap"
+                                       Text="urn://"/>
+                        </Border>
+                </StackPanel>
+            </TabItem>
+
+            <!-- Details Tab -->
+            <TabItem Header="📊 Details">
+                <ScrollViewer Padding="16">
+                    <StackPanel Spacing="8">
+                        <!-- Loading indicator -->
+                        <Border Name="DetailsLoadingPanel"
+                                Background="{DynamicResource FluentSurfaceAltBrush}"
+                                BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="20"
+                                HorizontalAlignment="Center"
+                                IsVisible="True">
+                            <TextBlock Text="Loading detailed information..."
+                                       Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                                       HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Error panel -->
+                        <Border Name="DetailsErrorPanel"
+                                Background="{DynamicResource FluentErrorBackgroundBrush}"
+                                BorderBrush="{DynamicResource FluentErrorBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="14"
+                                IsVisible="False">
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="❌ Error Loading Details"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource FluentErrorTextBrush}"/>
+                                <TextBlock Name="DetailsErrorText"
+                                           Foreground="{DynamicResource FluentErrorTextBrush}"
+                                           TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Metadata display (grouped by category) -->
+                        <ItemsControl Name="MetadataList" IsVisible="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding Category}"
+                                                   Classes="SectionHeader"/>
+                                        <ItemsControl ItemsSource="{Binding Properties}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid ColumnDefinitions="220,*" Margin="0,1">
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding Label}"
+                                                                   Classes="Label"/>
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding Value}"
+                                                                   Classes="Value"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Warnings Panel (if metadata has warnings) -->
+                        <Border Name="DetailsWarningsPanel"
+                                Background="{DynamicResource FluentWarningBackgroundBrush}"
+                                BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10"
+                                IsVisible="False">
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="⚠️ Warnings"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                                <ItemsControl Name="WarningsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}"
+                                                       Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,2"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Bottom Action Bar (standardized footer) -->
+        <Border Grid.Row="1" Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Don't show again checkbox -->
+                <CheckBox Grid.Column="0"
+                          Name="DontShowCheckBox"
+                          Content="Don't show this dialog for confident detections"
+                          Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                          VerticalAlignment="Center"
+                          IsVisible="False"/>
+
+                <!-- Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Name="MountButton" Content="Mount" Click="OnMountClick" Classes="dialog-primary"/>
+                    <Button Name="CancelButton" Content="Cancel" Click="OnCancelClick" Classes="dialog-secondary"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

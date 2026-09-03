@@ -1,0 +1,14 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fluentIcons="using:FluentIcons.Avalonia"
+             x:Class="RetroCommander.Desktop.App">
+             <!-- Theme variant is chosen at runtime by RetroCommander.Desktop.Themes.ThemeManager
+                  (Light / Dark / Solarized Dark / Nord / High Contrast), restored from the
+                  persisted user preference. Do NOT hard-code RequestedThemeVariant here. -->
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+        <StyleInclude Source="avares://RetroCommander/Styles/FluentTheme.axaml"/>
+    </Application.Styles>
+</Application>

@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.CreatePcImageDialog"
+        Title="Create New PC Disk Image"
+        Width="600"
+        MinWidth="520" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        SizeToContent="Height"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Grid RowDefinitions="Auto,Auto,Auto" Margin="15">
+        <TextBlock Grid.Row="0" Text="Create a new blank PC floppy or hard disk image (FAT12/16)"
+                   FontSize="14" FontWeight="Bold" Margin="0,0,0,15" />
+
+        <StackPanel Grid.Row="1" Spacing="12">
+                <!-- Media Type -->
+                <TextBlock Text="Media Type:" FontWeight="SemiBold"/>
+                <ComboBox Name="MediaTypeCombo" x:FieldModifier="internal" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                    <ComboBoxItem Content="Floppy Disk" Tag="Floppy"/>
+                    <ComboBoxItem Content="Hard Disk (MBR, single partition = 100% of disk)" Tag="HardDisk"/>
+                </ComboBox>
+
+                <!-- Floppy Size -->
+                <StackPanel Name="FloppySizePanel" x:FieldModifier="internal" Spacing="8">
+                    <TextBlock Text="Floppy Size:" FontWeight="SemiBold"/>
+                    <ComboBox Name="FloppySizeCombo" x:FieldModifier="internal" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="3">
+                        <ComboBoxItem Content="360KB (5.25&quot; DD, 40/2/9) — normal PC/XT floppy" Tag="Size360K"/>
+                        <ComboBoxItem Content="720KB (3.5&quot; DD, 80/2/9)" Tag="Size720K"/>
+                        <ComboBoxItem Content="1.2MB (5.25&quot; HD, 80/2/15) — normal PC/AT floppy" Tag="Size1_2M"/>
+                        <ComboBoxItem Content="1.44MB (3.5&quot; HD, 80/2/18) — late AT/286/386 standard" Tag="Size1_44M"/>
+                        <ComboBoxItem Content="2.88MB (3.5&quot; ED, 80/2/36)" Tag="Size2_88M"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Hard Disk Preset -->
+                <StackPanel Name="HddPresetPanel" x:FieldModifier="internal" IsVisible="False" Spacing="8">
+                    <TextBlock Text="Hard Disk Geometry:" FontWeight="SemiBold"/>
+                    <ComboBox Name="HddPresetCombo" x:FieldModifier="internal" Classes="fluent-combobox" HorizontalAlignment="Stretch" SelectedIndex="1">
+                        <ComboBoxItem Content="PC/XT 5MB (306/2/17)" Tag="Xt5MB"/>
+                        <ComboBoxItem Content="PC/XT 10MB (306/4/17, ST-412 class) — typical XT drive" Tag="Xt10MB"/>
+                        <ComboBoxItem Content="PC/XT 15MB (306/6/17)" Tag="Xt15MB"/>
+                        <ComboBoxItem Content="PC/XT 26MB (375/8/17)" Tag="Xt26MB"/>
+                        <ComboBoxItem Content="PC/AT 20MB (615/4/17, ST-225 class) — typical early AT drive" Tag="At20MB"/>
+                        <ComboBoxItem Content="PC/AT 30MB (615/6/17)" Tag="At30MB"/>
+                        <ComboBoxItem Content="PC/AT 47MB (940/6/17)" Tag="At47MB"/>
+                        <ComboBoxItem Content="PC/AT 62MB (940/8/17)" Tag="At62MB"/>
+                    </ComboBox>
+                    <TextBlock Text="A single MBR partition spanning the whole disk is created automatically."
+                               FontSize="11" Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                </StackPanel>
+
+                <!-- Volume Label -->
+                <TextBlock Text="Volume Label:" FontWeight="SemiBold"/>
+                <TextBox Name="VolumeLabelInput" x:FieldModifier="internal" Classes="fluent-textbox" MaxLength="11"
+                         Watermark="Optional, max 11 chars..." />
+
+                <!-- Output Path -->
+                <TextBlock Text="Output File:" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Name="OutputPathInput" Grid.Column="0" Classes="fluent-textbox"
+                             Watermark="Select output location..." IsReadOnly="True"/>
+                    <Button Grid.Column="1" Content="Browse..." Click="OnBrowseOutputClick"
+                            Classes="fluent-button" Margin="5,0,0,0" Padding="15,5"/>
+                </Grid>
+
+                <!-- Preview Information -->
+                <Border BorderBrush="{DynamicResource FluentBorderLightBrush}" BorderThickness="1" Background="{DynamicResource FluentSurfaceAltBrush}" Padding="10" Margin="0,10,0,0">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Image Preview:" FontWeight="Bold"/>
+                        <TextBlock Name="PreviewGeometry" x:FieldModifier="internal" Text="Geometry: -"/>
+                        <TextBlock Name="PreviewFileSize" x:FieldModifier="internal" Text="File Size: -"/>
+                        <TextBlock Name="PreviewFileSystem" x:FieldModifier="internal" Text="Filesystem: -"/>
+                    </StackPanel>
+                </Border>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+            <Button Name="CreateButton" Content="Create Image" Click="OnCreateClick"
+                    IsDefault="True" Classes="dialog-primary"/>
+            <Button Content="Cancel" Click="OnCancelClick" IsCancel="True" Classes="dialog-secondary"/>
+        </StackPanel>
+    </Grid>
+</Window>

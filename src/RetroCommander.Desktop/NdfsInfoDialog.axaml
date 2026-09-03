@@ -1,0 +1,146 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="700"
+        x:Class="RetroCommander.Desktop.NdfsInfoDialog"
+        Title="NDFS Disk Information"
+        Width="600" Height="700"
+        MinWidth="500" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,8,0,3"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="20,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="5,1,0,1"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource FluentBackgroundPrimaryBrush}" RowDefinitions="*,Auto">
+        <!-- Content Area -->
+        <ScrollViewer Grid.Row="0" Padding="14">
+            <StackPanel Spacing="3">
+                <!-- Volume Information -->
+                <TextBlock Text="📀 Volume Information" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Directory Name:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DirNameText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Volume Label:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="VolumeLabelText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Disk Type:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="DiskTypeText" Classes="Value"/>
+                </Grid>
+
+                <!-- Capacity -->
+                <TextBlock Text="💾 Capacity" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Total Capacity:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="TotalCapacityText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Used Space:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="UsedSpaceText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Free Space:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="FreeSpaceText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Used Percentage:" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="UsedPercentText" Classes="Value"/>
+                </Grid>
+
+                <!-- System Information -->
+                <TextBlock Text="🖥️ System Information" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Owning System Number:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="CpuSystemNumberText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Boot Format:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="BootFormatText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Bootable:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="BootableText" Classes="Value"/>
+                </Grid>
+
+                <!-- Technical Details -->
+                <TextBlock Text="🔍 Technical Details" Classes="SectionHeader"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="ObjectFile Block:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="ObjectFileBlockText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="UserFile Block:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="UserFileBlockText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="BitFile Block:" Classes="Label"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Name="BitFileBlockText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Checksum:" Classes="Label"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Name="ChecksumText" Classes="Value"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Extended Info:" Classes="Label"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Name="ExtInfoText" Classes="Value"/>
+                </Grid>
+
+                <!-- Warnings Panel (only visible if there are warnings) -->
+                <Border Name="WarningsPanel"
+                        Background="{DynamicResource FluentWarningBackgroundBrush}"
+                        BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4"
+                        Padding="10"
+                        Margin="0,10,0,0"
+                        IsVisible="False">
+                    <StackPanel>
+                        <TextBlock Text="⚠️ Warnings"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                   Margin="0,0,0,5"/>
+                        <TextBlock Name="WarningsTextBlock"
+                                   Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom Action Bar (standardized footer) -->
+        <Border Grid.Row="1" Classes="dialog-footer">
+            <Grid ColumnDefinitions="*,Auto">
+                <!-- Don't show again checkbox -->
+                <CheckBox Grid.Column="0"
+                          Name="DontShowCheckBox"
+                          Content="Don't show this dialog when mounting NDFS"
+                          Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                          VerticalAlignment="Center"/>
+
+                <!-- Buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                    <Button Name="MountButton"
+                            Content="Mount"
+                            Click="OnMountClick"
+                            Classes="dialog-primary"/>
+                    <Button Name="CancelButton"
+                            Content="Cancel"
+                            Click="OnCancelClick"
+                            Classes="dialog-secondary"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="660" d:DesignHeight="720"
+        x:Class="RetroCommander.Desktop.DiskInfoWindow"
+        Title="Disk Information"
+        Width="660" Height="720"
+        MinWidth="520" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <!-- Styles mirror NdfsDiskInfoWindow so the two screens read as one family.
+         Everything is DynamicResource so the window follows the live theme. -->
+    <Window.Styles>
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource FluentAccentBlueBrush}"/>
+            <Setter Property="Margin" Value="0,10,0,3"/>
+        </Style>
+        <Style Selector="TextBlock.Label">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="20,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.Value">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextPrimaryBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="5,1,0,1"/>
+        </Style>
+        <Style Selector="TextBlock.Detail">
+            <Setter Property="Foreground" Value="{DynamicResource FluentTextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="8,1,0,1"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid Background="{DynamicResource FluentBackgroundPrimaryBrush}" RowDefinitions="Auto,*,Auto">
+
+        <!-- Header: what volume this is -->
+        <StackPanel Grid.Row="0" Margin="14,12,14,0" Spacing="2">
+            <TextBlock Name="TitleText" Text="Disk Information"
+                       FontSize="16" FontWeight="Bold"
+                       Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+            <TextBlock Name="SubtitleText" Text=""
+                       Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Body: sections are generated at runtime from VolumeInfo, so a new driver
+             needs no change here. -->
+        <ScrollViewer Grid.Row="1" Padding="14,4,14,4">
+            <StackPanel Name="SectionsPanel" Spacing="2"/>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="14,8,14,12" Spacing="8">
+            <Button Name="CopyButton" Content="Copy to clipboard" Click="OnCopyClick"/>
+            <Button Name="CloseButton" Content="Close" Click="OnCloseClick" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,153 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.SettingsDialog"
+        Title="Settings"
+        Width="520" Height="520"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Settings" Classes="fluent-text-header" Margin="0,0,0,4"/>
+            <TextBlock Text="Customize the look and feel of RetroCommander."
+                       Classes="fluent-text-secondary"/>
+        </StackPanel>
+
+        <!-- Body -->
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="16">
+
+                <!-- Appearance section -->
+                <Border Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Appearance" Classes="fluent-text-header"/>
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Grid.Column="0" Text="Theme:"
+                                       Classes="fluent-text"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1"
+                                      x:Name="ThemeCombo"
+                                      Classes="fluent-combobox"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="OnThemeSelectionChanged"/>
+                        </Grid>
+
+                        <TextBlock Text="The theme changes immediately and is remembered next time you launch the app."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- File Viewer section -->
+                <Border Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="File Viewer" Classes="fluent-text-header"/>
+
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                            <TextBlock Grid.Column="0" Text="Font:"
+                                       Classes="fluent-text" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="1"
+                                      x:Name="ViewerFontCombo"
+                                      Classes="fluent-combobox"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="OnViewerFontChanged"/>
+
+                            <TextBlock Grid.Column="2" Text="Size:"
+                                       Classes="fluent-text" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Column="3"
+                                      x:Name="ViewerSizeCombo"
+                                      Classes="fluent-combobox"
+                                      MinWidth="70"
+                                      SelectionChanged="OnViewerSizeChanged"/>
+                        </Grid>
+
+                        <!-- Live preview in the chosen monospace font -->
+                        <Border Background="{DynamicResource FluentBackgroundSecondaryBrush}"
+                                BorderBrush="{DynamicResource FluentBorderLightBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource FluentCornerRadiusSmall}"
+                                Padding="10">
+                            <TextBlock x:Name="ViewerPreview"
+                                       Foreground="{DynamicResource FluentTextPrimaryBrush}"
+                                       TextWrapping="NoWrap"
+                                       Text="00000000  48 65 6C 6C 6F 20 52 65  74 72 6F 21 0A 00 FF 7F  Hello Retro!...&#x2022;"/>
+                        </Border>
+
+                        <TextBlock Text="Used by the file viewer (F3) for text and hex dumps. Applied the next time you open a file."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Mounts section -->
+                <Border Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="Mounts" Classes="fluent-text-header"/>
+
+                        <CheckBox x:Name="AutoUnmountCheck"
+                                  Content="Auto-unmount disks when no panel is viewing them"
+                                  IsCheckedChanged="OnAutoUnmountChanged"/>
+
+                        <TextBlock Text="When enabled, a mounted disk image is unmounted automatically once neither panel is showing it (its root or any subdirectory), so the Mounts list does not grow forever. Pinned favourites and disks you are currently browsing are kept."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <TextBlock Grid.Column="0" Text="Auto-mount as:" VerticalAlignment="Center"
+                                       Classes="fluent-text"/>
+                            <ComboBox Grid.Column="1"
+                                      x:Name="MountModeCombo"
+                                      Classes="fluent-combobox"
+                                      HorizontalAlignment="Stretch"
+                                      SelectionChanged="OnMountModeChanged">
+                                <ComboBoxItem Content="Auto (read-write when possible, else read-only)"/>
+                                <ComboBoxItem Content="Read-only (never modify the image)"/>
+                                <ComboBoxItem Content="Read-write (fail if write access is unavailable)"/>
+                            </ComboBox>
+                        </Grid>
+
+                        <TextBlock Text="Applies when a disk image is auto-mounted (double-click, navigate, or F9 Mount). Writing to an image — for example renaming an NDFS directory or clearing its 'entered' flag — requires a read-write mount. You can always override this for a single mount by right-clicking a disk image and choosing 'Open Read/Write' or 'Open Read Only'."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- File Transfers section -->
+                <Border Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="File Transfers" Classes="fluent-text-header"/>
+
+                        <CheckBox x:Name="PreserveNdfsMetadataCheck"
+                                  Content="Save NDFS details when exporting files"
+                                  IsCheckedChanged="OnPreserveNdfsMetadataChanged"/>
+
+                        <TextBlock Text="Keeps NDFS-specific info (owner, dates, access, layout) in a companion .xat file when you copy files out to another filesystem. Copies between two NDFS images always keep this automatically."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+
+                        <CheckBox x:Name="UseXatMetadataOnImportCheck"
+                                  Content="Use NDFS details (.xat) when importing files"
+                                  IsCheckedChanged="OnUseXatMetadataOnImportChanged"/>
+
+                        <TextBlock Text="Restores NDFS-specific info from a companion .xat file when you copy files into an NDFS image, if one sits next to the source (usually from a previous export). The .xat file itself is used only as metadata for its paired file — it is not copied into the NDFS image on its own."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Spacing="12" Margin="0,16,0,0">
+            <Button Content="Close" Classes="dialog-primary"
+                    Click="OnCloseClick" IsDefault="True" IsCancel="True"/>
+        </StackPanel>
+
+    </Grid>
+</Window>

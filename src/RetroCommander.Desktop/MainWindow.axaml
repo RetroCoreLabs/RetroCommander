@@ -1,0 +1,323 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="using:RetroCommander.Desktop"
+        xmlns:controls="using:RetroCommander.Desktop.Controls"
+        xmlns:fluentIcons="using:FluentIcons.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
+        x:Class="RetroCommander.Desktop.MainWindow"
+        Title="RetroCommander - Retro Filesystem Manager"
+        Width="1200" Height="700"
+        MinWidth="800" MinHeight="500"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}">
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0" Background="{DynamicResource FluentBackgroundSecondaryBrush}">
+            <MenuItem Header="_File">
+                <MenuItem Header="_Mount" Click="OnF9Mount" InputGesture="F9"/>
+                <!-- ONE entry point for creating any image format (NDFS / PC / Commodore).
+                     The old separate "New Commodore Disk..." item is now a format in this dialog. -->
+                <MenuItem Header="_New Image..." Click="OnF2NewImage" InputGesture="F2"/>
+                <!-- Disk Info is always available: NDFS panels get the rich NDFS window,
+                     every other filesystem gets the generic VolumeInfo window. -->
+                <MenuItem Header="Disk _Info..." Click="OnDiskInfoClick"/>
+                <MenuItem Header="NDFS Disk _Info..." Name="NdfsDiskInfoMenuItem"
+                          Click="OnNdfsDiskInfoClick" IsVisible="False"/>
+                <Separator/>
+                <MenuItem Header="_Settings..." Click="OnSettingsClick"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="OnF10Quit" InputGesture="F10"/>
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_Help" Click="OnF1Help" InputGesture="F1"/>
+                <MenuItem Header="_Log" Click="OnLogClick"/>
+                <MenuItem Header="_About" Click="OnAboutClick"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Unified toolbar: Back + drive/folder hot-links + Mounts/Recents dropdowns -->
+        <controls:QuickAccessBar Grid.Row="1"
+                                 x:Name="QuickAccess"
+                                 ItemSelected="OnQuickAccessItemSelected"/>
+
+        <!-- Main Content: Sidebar + Dual Panels -->
+        <Grid Grid.Row="3" ColumnDefinitions="200,5,*" Margin="5">
+            <!-- Navigation Sidebar -->
+            <controls:NavigationSidebar Grid.Column="0" 
+                                       x:Name="NavigationSidebar"
+                                       ItemSelected="OnSidebarItemSelected"/>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Background="{DynamicResource FluentBorderLightBrush}" HorizontalAlignment="Stretch"/>
+
+            <!-- Dual Panel Layout -->
+            <Grid Grid.Column="2" ColumnDefinitions="*,5,*">
+                <!-- Left Panel -->
+                <Border Grid.Column="0" Classes="panel-border panel-active" x:Name="LeftPanelBorder" PointerPressed="OnLeftPanelClick">
+                    <Grid RowDefinitions="Auto,*,Auto">
+                        <!-- Left Panel Header -->
+                        <Border Grid.Row="0" Background="{DynamicResource FluentSurfaceAltBrush}" BorderBrush="{DynamicResource FluentBorderLightBrush}" BorderThickness="0,0,0,1">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Height="27" Margin="8,0">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Name="LeftPanelPath" Text="C:\" Classes="fluent-text-header panel-path" VerticalAlignment="Center"/>
+                                    <Border Classes="fs-badge" Margin="0,0,8,0">
+                                        <TextBlock Name="LeftPanelFsType" Text="FAT32"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                    <Button Name="BtnLeftUp" Click="OnLeftUpClick" Width="24" Height="22" Padding="0"
+                                            Classes="fluent-button"
+                                            ToolTip.Tip="Go up one directory">
+                                        <fluentIcons:SymbolIcon Symbol="ArrowUp" FontSize="14"/>
+                                    </Button>
+                                    <Button Name="BtnLeftRefresh" Click="OnLeftRefreshClick" Width="24" Height="22" Padding="0"
+                                            Classes="fluent-button"
+                                            ToolTip.Tip="Refresh left panel">
+                                        <fluentIcons:SymbolIcon Symbol="ArrowClockwise" FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Left Panel Content -->
+                        <DataGrid Grid.Row="1" Name="LeftPanel"
+                                  Classes="fluent-datagrid"
+                                  SelectionMode="Extended" IsReadOnly="True"
+                                  DoubleTapped="OnLeftDoubleClick"
+                                  KeyDown="OnLeftPanelKeyDown"
+                                  SelectionChanged="OnLeftSelectionChanged"
+                                  PointerPressed="OnLeftPanelClick"
+                                  PointerMoved="OnLeftPanelPointerMoved"
+                                  DragDrop.AllowDrop="True"
+                                  CanUserResizeColumns="True"
+                                  CanUserReorderColumns="True"
+                                  AutoGenerateColumns="False"
+                                  GridLinesVisibility="Horizontal"
+                                  Margin="2">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" 
+                                                   Binding="{Binding Name, Mode=OneWay}" 
+                                                   Width="*" 
+                                                   MinWidth="150"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True"/>
+                                <!-- Right-aligned Size (numeric values read better flush-right) -->
+                                <DataGridTemplateColumn Header="Size"
+                                                   Width="120"
+                                                   MinWidth="80"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeFormatted}"
+                                                       HorizontalAlignment="Stretch"
+                                                       TextAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Modified"
+                                                   Binding="{Binding ModifiedFormatted, Mode=OneWay}"
+                                                   Width="180"
+                                                   MinWidth="120"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True"/>
+                            </DataGrid.Columns>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Open Read/_Write" Click="OnLeftOpenReadWriteClick"/>
+                                    <MenuItem Header="Open Read _Only" Click="OnLeftOpenReadOnlyClick"/>
+                                    <Separator/>
+                                    <MenuItem Header="Properties" Click="OnLeftPropertiesClick"/>
+                                    <MenuItem Header="Disk Info..." Click="OnLeftDiskInfoClick"/>
+                                    <MenuItem Header="NDFS Disk Info..." Name="LeftNdfsDiskInfoMenuItem"
+                                              Click="OnLeftNdfsDiskInfoClick" IsVisible="False"/>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                        </DataGrid>
+
+                        <!-- Left Panel Footer -->
+                        <Border Grid.Row="2" Classes="status-bar" Height="20">
+                            <TextBlock Name="LeftPanelStatus" Text="Ready" Classes="fluent-text-secondary" VerticalAlignment="Center" Margin="8,0"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Splitter -->
+                <GridSplitter Grid.Column="1" Background="{DynamicResource FluentBorderLightBrush}" HorizontalAlignment="Stretch"/>
+
+                <!-- Right Panel -->
+                <Border Grid.Column="2" Classes="panel-border panel-inactive" x:Name="RightPanelBorder" PointerPressed="OnRightPanelClick">
+                    <Grid RowDefinitions="Auto,*,Auto">
+                        <!-- Right Panel Header -->
+                        <Border Grid.Row="0" Background="{DynamicResource FluentSurfaceAltBrush}" BorderBrush="{DynamicResource FluentBorderLightBrush}" BorderThickness="0,0,0,1">
+                            <Grid ColumnDefinitions="Auto,*,Auto" Height="27" Margin="8,0">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Name="RightPanelPath" Text="D:\" Classes="fluent-text-header panel-path" VerticalAlignment="Center"/>
+                                    <Border Classes="fs-badge" Margin="0,0,8,0">
+                                        <TextBlock Name="RightPanelFsType" Text="NTFS"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                    <Button Name="BtnRightUp" Click="OnRightUpClick" Width="24" Height="22" Padding="0"
+                                            Classes="fluent-button"
+                                            ToolTip.Tip="Go up one directory">
+                                        <fluentIcons:SymbolIcon Symbol="ArrowUp" FontSize="14"/>
+                                    </Button>
+                                    <Button Name="BtnRightRefresh" Click="OnRightRefreshClick" Width="24" Height="22" Padding="0"
+                                            Classes="fluent-button"
+                                            ToolTip.Tip="Refresh right panel">
+                                        <fluentIcons:SymbolIcon Symbol="ArrowClockwise" FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Right Panel Content -->
+                        <DataGrid Grid.Row="1" Name="RightPanel"
+                                  Classes="fluent-datagrid"
+                                  SelectionMode="Extended" IsReadOnly="True"
+                                  DoubleTapped="OnRightDoubleClick"
+                                  KeyDown="OnRightPanelKeyDown"
+                                  SelectionChanged="OnRightSelectionChanged"
+                                  PointerPressed="OnRightPanelClick"
+                                  PointerMoved="OnRightPanelPointerMoved"
+                                  DragDrop.AllowDrop="True"
+                                  CanUserResizeColumns="True"
+                                  CanUserReorderColumns="True"
+                                  AutoGenerateColumns="False"
+                                  GridLinesVisibility="Horizontal"
+                                  Margin="2">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" 
+                                                   Binding="{Binding Name, Mode=OneWay}" 
+                                                   Width="*" 
+                                                   MinWidth="150"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True"/>
+                                <!-- Right-aligned Size (numeric values read better flush-right) -->
+                                <DataGridTemplateColumn Header="Size"
+                                                   Width="120"
+                                                   MinWidth="80"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeFormatted}"
+                                                       HorizontalAlignment="Stretch"
+                                                       TextAlignment="Right"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Modified"
+                                                   Binding="{Binding ModifiedFormatted, Mode=OneWay}"
+                                                   Width="180"
+                                                   MinWidth="120"
+                                                   CanUserResize="True"
+                                                   CanUserReorder="True"/>
+                            </DataGrid.Columns>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Open Read/_Write" Click="OnRightOpenReadWriteClick"/>
+                                    <MenuItem Header="Open Read _Only" Click="OnRightOpenReadOnlyClick"/>
+                                    <Separator/>
+                                    <MenuItem Header="Properties" Click="OnRightPropertiesClick"/>
+                                    <MenuItem Header="Disk Info..." Click="OnRightDiskInfoClick"/>
+                                    <MenuItem Header="NDFS Disk Info..." Name="RightNdfsDiskInfoMenuItem"
+                                              Click="OnRightNdfsDiskInfoClick" IsVisible="False"/>
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                        </DataGrid>
+
+                        <!-- Right Panel Footer -->
+                        <Border Grid.Row="2" Classes="status-bar" Height="20">
+                            <TextBlock Name="RightPanelStatus" Text="Ready" Classes="fluent-text-secondary" VerticalAlignment="Center" Margin="8,0"/>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="4" Classes="status-bar" Height="20">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Name="StatusText" Text="Ready" Classes="fluent-text-secondary" VerticalAlignment="Center" Margin="8,0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,0">
+                    <TextBlock Name="LeftPanelInfo" Text="Left: 0 files" Classes="fluent-text-secondary" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                    <TextBlock Name="RightPanelInfo" Text="Right: 0 files" Classes="fluent-text-secondary" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- F-Key Bar (modern keycap + label function-key strip) -->
+        <Border Grid.Row="5" Classes="fkey-bar" Height="34">
+            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*">
+                <Button Grid.Column="0" Classes="fkey" Click="OnF1Help" ToolTip.Tip="Help">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F1"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Help"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="1" Classes="fkey" Click="OnF2NewImage" ToolTip.Tip="Create new NDFS disk image">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F2"/></Border>
+                        <TextBlock Classes="fkey-label" Text="New Img"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2" Classes="fkey" Click="OnF3View" ToolTip.Tip="View selected file">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F3"/></Border>
+                        <TextBlock Classes="fkey-label" Text="View"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" Classes="fkey" Click="OnF4Edit" ToolTip.Tip="Edit selected file">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F4"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Edit"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="4" Classes="fkey" Click="OnF5Copy" ToolTip.Tip="Copy">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F5"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Copy"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="5" Classes="fkey" Click="OnF6Move" ToolTip.Tip="Move / rename">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F6"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Move"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="6" Classes="fkey" Click="OnF7Mkdir" ToolTip.Tip="Make directory">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F7"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Mkdir"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="7" Classes="fkey" Click="OnF8Delete" ToolTip.Tip="Delete">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F8"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Delete"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="8" Classes="fkey" Click="OnF9Mount" ToolTip.Tip="Mount filesystem">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F9"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Mount"/>
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="9" Classes="fkey" Click="OnF10Quit" ToolTip.Tip="Quit">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="fkey-cap"><TextBlock Text="F10"/></Border>
+                        <TextBlock Classes="fkey-label" Text="Quit"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
