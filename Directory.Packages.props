@@ -5,8 +5,19 @@
          picked up. Central Package Management REJECTS a floating PackageVersion unless this is on
          (NU1011), so the local-feed workflow does not build without it. -->
     <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
+    <!-- Needed so the Tmds.DBus.Protocol pin below actually applies: it is a TRANSITIVE
+         dependency of Avalonia, and central pinning ignores those unless this is on. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Transitive pin. Avalonia 11.3.6 pulls Tmds.DBus.Protocol 0.21.2, which carries a high
+         severity advisory (GHSA-xrw6-gwf8-vvr9, spoofed D-Bus signals and fd exhaustion).
+         0.21.3 is the patch on the same line, so Avalonia gets the API it expects. Pinning it
+         needs CentralPackageTransitivePinningEnabled: without that, a PackageVersion for a
+         package nothing references directly is ignored and the advisory stays.
+         Remove both once Avalonia ships a build that asks for 0.21.3 or later itself. -->
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.21.3" />
+
     <PackageVersion Include="Avalonia" Version="11.3.6" />
     <PackageVersion Include="Avalonia.Controls.DataGrid" Version="11.3.6" />
     <PackageVersion Include="Avalonia.Desktop" Version="11.3.6" />
