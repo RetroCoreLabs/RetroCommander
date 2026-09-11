@@ -30,10 +30,10 @@ a format bug shows up first.
 |---|---|---|---|
 | P1 | .NET SDK as pinned in `global.json` | Everything | `dotnet --info` |
 | P2 | PowerShell 7+ | `build.ps1` | `$PSVersionTable.PSVersion` |
-| P3 | **RetroIO packed to `E:\Dev\RCL\localfeed`** | Restore | `dir E:\Dev\RCL\localfeed` |
+| P3 | **RetroIO packed to the local feed** (`../localfeed`, beside the repositories) | Restore | `dir ..\localfeed` |
 | P4 | **A Windows desktop session** | It is an Avalonia GUI | Not usable over a plain SSH session |
 | P5 | Disk images to open | Anything useful | `eng\setup-test-data.ps1` in RetroIO creates the junction |
-| P6 | The corpus at `C:\Users\ronny\OneDrive\Documents\RetroFS\test-images` | The Dragon and PC images | They exist **only** there |
+| P6 | The corpus at `Documents\RetroFS\test-images` (under your user profile) | The Dragon and PC images | They exist **only** there |
 | P7 | **`RETROFS_DATA_PATH` not set** | Finding the corpus at all | `$env:RETROFS_DATA_PATH` must be empty |
 | P8 | A RetroServer, for the TNFS client side | Only the remote tests | `.\build.ps1` in RetroServer |
 
@@ -41,7 +41,7 @@ a format bug shows up first.
 > RetroServer test had you set it, the corpus appears to have vanished here. Clear it first.
 
 ```powershell
-cd E:\Dev\RCL\RetroCommander
+# from the repository root
 .\build.ps1
 publish\win-x64\RetroCommander.exe
 ```
@@ -129,12 +129,12 @@ found here belongs there as a test, because a driver fixed only in the file mana
 the servers.
 
 Manual test procedures, including the filesystem matrix, are in
-`E:\Dev\RCL\Migration\Manual tests - RetroCommander.md`.
+the migration notes, as `Manual tests - RetroCommander.md`.
 
 ## Conventions
 
 - Names follow the workspace naming standard; diagrams follow the workspace Mermaid palette. Both live one level
-  up, **outside this repository**, so they are paths rather than links: `E:\Dev\RCL\NAMING.md` and
-  `E:\Dev\RCL\MERMAID_COLOR_STANDARDS.md`.
-- `python E:\Dev\RCL\eng\check-docs.py .` checks every link and diagram here.
+  up in the workspace root, **outside this repository**, so they are paths rather than links: `NAMING.md` and
+  `MERMAID_COLOR_STANDARDS.md`.
+- `python ../eng/check-docs.py .` checks every link and diagram here.
 - The org is **RetroCoreLabs**. `HackerCorpLabs` is retired.

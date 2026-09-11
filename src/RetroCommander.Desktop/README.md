@@ -34,10 +34,10 @@ it is wrong.
 |---|---|---|---|
 | P1 | .NET SDK as pinned in `global.json`, or the published exe | To build or run | `dotnet --info` |
 | P2 | **A Windows desktop session** | It is an Avalonia GUI | Not usable over a plain SSH session |
-| P3 | RetroIO packed to the local feed | Restore | `dir E:\Dev\RCL\localfeed` |
+| P3 | RetroIO packed to the local feed | Restore | `dir ..\localfeed` |
 | P4 | Images to open | Anything useful | The test corpus, or your own |
 | P5 | **`RETROFS_DATA_PATH` not set** | Finding the corpus | `$env:RETROFS_DATA_PATH` must be empty |
-| P6 | A copy of anything you will modify | It writes in place | Copy to `E:\Dev\RCL\_manualtest\images` first |
+| P6 | A copy of anything you will modify | It writes in place | Copy it to a scratch directory first |
 | P7 | A running TNFS or Econet server | The remote providers only | Optional |
 
 > **Work on copies.** Editing a file, writing to an image, or repairing one changes the image you opened. The test
