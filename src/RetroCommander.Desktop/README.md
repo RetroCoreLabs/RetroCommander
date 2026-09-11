@@ -1,5 +1,10 @@
 # RetroCommander — the file manager
 
+<!-- A still screenshot of RetroCommander.Desktop doing its job. PNG, under 10 MB. Uncomment when
+     the capture exists; keep the alt text, it is all a screen reader gets.
+![RetroCommander.Desktop in use.](../../docs/images/readme/RetroCommander.Desktop.png)
+-->
+
 ## What it is
 
 An Avalonia desktop file manager for **vintage disk images and retro filesystems**. Mount a D64, an NDFS system

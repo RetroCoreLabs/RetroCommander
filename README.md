@@ -3,6 +3,16 @@
 **A file manager for vintage disk images.** One window, two panes, and every format RetroIO can read — D64, NDFS,
 DragonDOS, FAT, UNIX V7, FFS and the rest — alongside ordinary directories and remote shares.
 
+[![build](https://github.com/RetroCoreLabs/RetroCommander/actions/workflows/build.yml/badge.svg)](https://github.com/RetroCoreLabs/RetroCommander/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/RetroCoreLabs/RetroCommander)](https://github.com/RetroCoreLabs/RetroCommander/releases)
+[![licence](https://img.shields.io/github/license/RetroCoreLabs/RetroCommander)](LICENSE)
+[![downloads](https://img.shields.io/github/downloads/RetroCoreLabs/RetroCommander/total)](https://github.com/RetroCoreLabs/RetroCommander/releases)
+[What it does](#why-this-repo-exists) Â· [Prerequisites](#prerequisites) Â· [The formats](#what-it-sits-on) Â· [About the disk formats](#about-the-disk-formats)
+
+<!-- A 5-15 second recording: two panes open, a D64 image on one side and a folder on the
+     other, a file dragged across. Under 10 MB. Uncomment when the capture exists.
+![RetroCommander with a Commodore D64 image in the left pane and an ordinary folder in the right, and a file dragged from one to the other.](docs/images/readme/demo.gif)
+-->
 ## Why this repo exists
 
 Getting a file out of a thirty-year-old disk image usually means a format-specific command-line tool, if one exists
@@ -24,6 +34,20 @@ a format bug shows up first.
 
 ---
 
+## Status
+
+No tagged release yet, so the release and download badges above are empty until the first
+`v*` tag is pushed. The application builds and runs.
+
+- **The solution builds in Release with no errors**, and two test projects cover it.
+- **Every driver RetroIO has is reachable** from the two panes, alongside ordinary
+  directories and remote shares. A file manager touches all of them, which makes this the
+  place a format bug appears first.
+- **Metadata the destination filesystem cannot hold is preserved in a sidecar** rather than
+  silently dropped.
+- **Not yet measured:** copy throughput between formats. No number is claimed here.
+
+---
 ## Prerequisites
 
 | # | Requirement | Needed for | How to check |
@@ -131,6 +155,25 @@ the servers.
 Manual test procedures, including the filesystem matrix, are in
 the migration notes, as `Manual tests - RetroCommander.md`.
 
+## About the disk formats
+
+A disk image is a byte-for-byte copy of a floppy or a hard disk, and the bytes mean nothing
+until you know the filesystem that wrote them. Between roughly 1975 and 1995 almost every
+machine had its own, and they do not resemble each other.
+
+**D64** is a Commodore 64 floppy: 35 tracks, a directory at track 18, and a sector-chain
+layout that predates the idea of a file allocation table. **NDFS** is what a Norsk Data
+ND-100 minicomputer boots SINTRAN III from. **DragonDOS** belongs to the Dragon 32/64.
+**ADFS** is Acorn's, on the BBC Micro and the Archimedes. **UNIX V7** and **FFS** are the
+early UNIX filesystems, which is where most of the ideas in a modern one come from. **FAT12,
+16 and 32** are the DOS and Windows ones, and the only family still in everyday use.
+
+Getting a file out of one of these usually means a format-specific command-line tool, if one
+exists at all, and a different tool for the next format. Copying *between* two formats means
+both tools and an intermediate directory. This is the ordinary answer: mount them all in one
+namespace, and drag.
+
+---
 ## Conventions
 
 - Names follow the workspace naming standard; diagrams follow the workspace Mermaid palette. Both live one level
@@ -138,3 +181,13 @@ the migration notes, as `Manual tests - RetroCommander.md`.
   `MERMAID_COLOR_STANDARDS.md`.
 - `python eng/check-docs.py` checks every link and diagram here.
 - The org is **RetroCoreLabs**. `HackerCorpLabs` is retired.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get a build running, what the code is
+expected to look like, and what will get a change sent back. A security problem goes through
+[SECURITY.md](SECURITY.md) and never a public issue.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).
