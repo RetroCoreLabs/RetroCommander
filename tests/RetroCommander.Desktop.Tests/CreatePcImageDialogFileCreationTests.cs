@@ -1,7 +1,7 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Exercises the EXACT code path the real "Create Image" button
 // invokes (CreatePcImageDialog.CreateImageFileAsync), writing a real file to disk and mounting it
 // back through PcFloppyDriver — the same driver RetroCommander itself uses — rather than only

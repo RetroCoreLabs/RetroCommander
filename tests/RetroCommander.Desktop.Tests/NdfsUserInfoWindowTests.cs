@@ -1,7 +1,7 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Headless-driven tests for NdfsUserInfoWindow (the F3-view for a top-level
 // NDFS user). Constructs the REAL window over a live NDFS mount (BIGDISK0-L.IMG) and verifies the
 // user fields, the password formatting (decimal + 6-digit ND octal with a 'B' suffix), read-only

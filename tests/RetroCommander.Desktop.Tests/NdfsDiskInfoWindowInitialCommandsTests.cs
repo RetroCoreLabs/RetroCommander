@@ -1,7 +1,7 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Headless-driven tests for the "Initial Commands" tab of
 // NdfsDiskInfoWindow. Construct the REAL window over a live NDFS mount (the repo's BIGDISK0-L.IMG
 // SINTRAN L pack) and drive it the way a user would: read the editor, click Save, toggle read-only.

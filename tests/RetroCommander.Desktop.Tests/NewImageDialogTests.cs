@@ -1,7 +1,7 @@
 ﻿//
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Headless-driven tests for the unified NewImageDialog: constructs the
 // real Window and drives it the way a user would (selecting a format in the left list, changing
 // combos, typing names) and asserts on panel visibility, live preview text, inline validation, and

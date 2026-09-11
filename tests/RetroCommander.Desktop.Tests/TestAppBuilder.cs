@@ -1,7 +1,7 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Avalonia.Headless bootstrap, so [AvaloniaTest] methods can construct
 // and drive real Window/Control instances without an actual display (CI/no-GUI safe).
 //

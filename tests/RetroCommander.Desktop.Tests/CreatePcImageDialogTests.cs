@@ -1,7 +1,7 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// HackerCorp Labs — https://github.com/HackerCorpLabs
+// RetroCore Labs — https://github.com/RetroCoreLabs
 // RetroCommander.Desktop.Tests -- Real, headless-driven tests for CreatePcImageDialog: constructs the
 // actual Window/ComboBox/TextBlock instances (via Avalonia.Headless, no real display) and drives
 // them the way a user would — selecting combo items and reading back visibility/preview text —
