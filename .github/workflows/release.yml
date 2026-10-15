@@ -1,16 +1,188 @@
+# Turn a v* tag into a GitHub release carrying a self-contained RetroCommander for each platform.
+#
+#   feed     RetroCommander references RetroIO.* packages as 0.1.0-local.*, and those are not on
+#            nuget.org yet, so this job checks out RetroCoreLabs/RetroIO, packs it the way RetroIO's
+#            eng/publish-local.ps1 does (version suffix local.<timestamp>) and hands the folder to
+#            the other jobs as an artifact. Each of them points the nuget.config source called
+#            `local` at that folder - the repo file names a folder beside the checkout, which does
+#            not exist on a runner. Only a release builds RetroIO; build.yml does not, so its
+#            restore fails until the packages are on nuget.org. When they are, delete this job,
+#            the `needs: feed` lines and the two feed steps in test and publish.
+#
+#   test     The same test run build.yml does, repeated here so a tag can never publish a build that
+#            was not tested. Windows only, because the UI tests need it.
+#
+#   publish  One single-file, self-contained RetroCommander per runtime - win-x64, linux-x64,
+#            osx-x64 and osx-arm64 - each built ON ITS OWN operating system's runner so the native
+#            libraries Avalonia and SkiaSharp unpack at first start are the ones that runner built.
+#            The publish switches are the ones build.ps1 uses; read the comment there before
+#            changing any of them. PublishTrimmed is deliberately NOT set: Avalonia resolves types
+#            by reflection and trimming breaks the app at run time, not at build time.
+#
+#   release  Runs once, after every publish job succeeded, and attaches the four files to the
+#            release for the tag. One failed platform means no release at all.
+#
+# Make a release:   git tag v0.1.0 && git push origin v0.1.0
+# The tag is the release name. The file version comes from VersionPrefix in Directory.Build.props,
+# so bump that before tagging.
+#
+# macOS and Linux get a .tar.gz because a bare binary loses its execute bit when it is downloaded.
+# No .app bundle or desktop entry yet: the repository has no icon source for them.
 name: release
 on:
   push:
     tags: [ 'v*' ]
+env:
+  # The RetroIO branch, tag or commit the release is built against. A commit hash makes the
+  # release repeatable; `main` follows whatever RetroIO is at when the tag is pushed.
+  RETROIO_REF: main
 jobs:
-  release:
+  feed:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: RetroCoreLabs/RetroIO
+          ref: ${{ env.RETROIO_REF }}
+          path: retroio
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: retroio/global.json
+      - name: Pack RetroIO into a feed folder
+        shell: pwsh
+        run: |
+          $stamp = Get-Date -Format 'yyyyMMddHHmmss'
+          $sln = @('retroio/RetroIO.slnx', 'retroio/RetroIO.sln') | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $sln) { throw 'no RetroIO.slnx or RetroIO.sln in the checkout' }
+          dotnet pack $sln -c Release -nodeReuse:false -o feed -p:VersionSuffix="local.$stamp"
+          if ($LASTEXITCODE -ne 0) { throw 'pack failed' }
+          Get-ChildItem feed -Filter *.nupkg | Select-Object -ExpandProperty Name
+      - uses: actions/upload-artifact@v4
+        with:
+          name: retroio-feed
+          path: feed/*.nupkg
+          if-no-files-found: error
+
+  test:
+    needs: feed
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet publish -c Release -nodeReuse:false -o publish
-      - uses: softprops/action-gh-release@v2
+      - uses: actions/download-artifact@v4
         with:
-          files: publish/**
+          name: retroio-feed
+          path: ${{ runner.temp }}/localfeed
+      - name: Point the local feed at the RetroIO packages
+        shell: pwsh
+        run: dotnet nuget update source local --source "${{ runner.temp }}/localfeed" --configfile nuget.config
+      # No solution filename on purpose: a bare `dotnet <verb>` resolves whichever .slnx or .sln
+      # is in the working directory (see build.yml).
+      - run: dotnet restore
+      - run: dotnet build -c Release --no-restore -warnaserror -nodeReuse:false
+      - run: dotnet test -c Release --no-build -nodeReuse:false --filter "Category!=Azure&Category!=ExternalTNFSD&Category!=RealNetwork&Category!=Manual&Category!=ProcessSpawn"
+
+  publish:
+    needs: [ feed, test ]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # asset is the one file each runner hands to the release job.
+          - os: windows-latest
+            rid: win-x64
+            binary: RetroCommander.exe
+            asset: RetroCommander-win-x64.exe
+          - os: ubuntu-latest
+            rid: linux-x64
+            binary: RetroCommander
+            asset: RetroCommander-linux-x64.tar.gz
+          # macos-13 was retired; macos-15-intel is the Intel image that is still live.
+          - os: macos-15-intel
+            rid: osx-x64
+            binary: RetroCommander
+            asset: RetroCommander-osx-x64.tar.gz
+          - os: macos-latest
+            rid: osx-arm64
+            binary: RetroCommander
+            asset: RetroCommander-osx-arm64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: retroio-feed
+          path: ${{ runner.temp }}/localfeed
+      - name: Point the local feed at the RetroIO packages
+        shell: pwsh
+        run: dotnet nuget update source local --source "${{ runner.temp }}/localfeed" --configfile nuget.config
+      # Only the desktop app is published. A bare `dotnet publish` on the solution would also
+      # publish the test projects.
+      - run: >
+          dotnet publish src/RetroCommander.Desktop/RetroCommander.Desktop.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained true -o out/${{ matrix.rid }}
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:SatelliteResourceLanguages=en
+          -p:DebugType=none
+          -p:GenerateDocumentationFile=false
+          -nodeReuse:false
+      - name: Package
+        shell: bash
+        run: |
+          set -e
+          ls -la out/${{ matrix.rid }}
+          # The release is ONE file. The RetroIO code is inside it, so a loose .dll, .pdb or
+          # second file here means a publish switch above stopped working: fail rather than ship it.
+          count=$(find out/${{ matrix.rid }} -type f | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "expected exactly one file in out/${{ matrix.rid }}, found $count"
+            exit 1
+          fi
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp out/${{ matrix.rid }}/${{ matrix.binary }} out/${{ matrix.asset }}
+          else
+            chmod +x out/${{ matrix.rid }}/${{ matrix.binary }}
+            tar -C out/${{ matrix.rid }} -czf out/${{ matrix.asset }} ${{ matrix.binary }}
+            tar -tvzf out/${{ matrix.asset }}
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RetroCommander-${{ matrix.rid }}
+          path: out/${{ matrix.asset }}
+          if-no-files-found: error
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: RetroCommander-*
+          path: artifacts
+      - name: Create the release with the four downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -laR artifacts
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "RetroCommander ${{ github.ref_name }}" \
+            --generate-notes \
+            --notes "Self-contained builds, no .NET runtime needed.
+
+          - RetroCommander-win-x64.exe: Windows x64. A single exe; run it.
+          - RetroCommander-linux-x64.tar.gz: Linux x64. tar -xzf it, then run ./RetroCommander.
+          - RetroCommander-osx-arm64.tar.gz (Apple silicon) and RetroCommander-osx-x64.tar.gz (Intel): tar -xzf it, then run ./RetroCommander. The binary is not signed or notarised, so the first time run: xattr -d com.apple.quarantine ./RetroCommander" \
+            artifacts/RetroCommander-win-x64/RetroCommander-win-x64.exe \
+            artifacts/RetroCommander-linux-x64/RetroCommander-linux-x64.tar.gz \
+            artifacts/RetroCommander-osx-x64/RetroCommander-osx-x64.tar.gz \
+            artifacts/RetroCommander-osx-arm64/RetroCommander-osx-arm64.tar.gz
