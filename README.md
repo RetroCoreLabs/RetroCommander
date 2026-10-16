@@ -13,6 +13,12 @@ DragonDOS, FAT, UNIX V7, FFS and the rest — alongside ordinary directories and
      other, a file dragged across. Under 10 MB. Uncomment when the capture exists.
 ![RetroCommander with a Commodore D64 image in the left pane and an ordinary folder in the right, and a file dragged from one to the other.](docs/images/readme/demo.gif)
 -->
+## How this code was written
+
+Some of the code in this repository was written with the help of AI, mostly Claude (Anthropic).
+Ronny Hansen directs the work, tests it against real hardware and emulators, and is responsible for
+what is in the repository. We say so plainly so you know what you are using.
+
 ## Why this repo exists
 
 Getting a file out of a thirty-year-old disk image usually means a format-specific command-line tool, if one exists
