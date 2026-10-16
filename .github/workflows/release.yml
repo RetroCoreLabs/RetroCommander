@@ -23,8 +23,9 @@
 #            release for the tag. One failed platform means no release at all.
 #
 # Make a release:   git tag v0.1.0 && git push origin v0.1.0
-# The tag is the release name. The file version comes from VersionPrefix in Directory.Build.props,
-# so bump that before tagging.
+# The tag is the release name AND the version: the publish job passes -p:Version=<tag without the
+# leading v>, so the exe's file version, the assembly version and the version in the About box all
+# come from the tag. VersionPrefix in Directory.Build.props is only the version of local builds.
 #
 # macOS and Linux get a .tar.gz because a bare binary loses its execute bit when it is downloaded.
 # No .app bundle or desktop entry yet: the repository has no icon source for them.
@@ -121,11 +122,28 @@ jobs:
       - name: Point the local feed at the RetroIO packages
         shell: pwsh
         run: dotnet nuget update source local --source "${{ runner.temp }}/localfeed" --configfile nuget.config
+      # The tag is the version. v1.2.3 gives 1.2.3, v1.2.3-rc1 gives 1.2.3-rc1. A tag that is not
+      # vMAJOR.MINOR.PATCH[-suffix] stops the build here, before anything is published, so a
+      # release can never carry a version that does not match its tag.
+      - name: Version from the tag
+        id: ver
+        shell: bash
+        run: |
+          set -e
+          tag="${GITHUB_REF_NAME}"
+          if ! echo "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "tag '$tag' is not vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-suffix"
+            exit 1
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "Building version ${tag#v}"
       # Only the desktop app is published. A bare `dotnet publish` on the solution would also
-      # publish the test projects.
+      # publish the test projects. -p:Version overrides VersionPrefix from Directory.Build.props and
+      # sets the assembly, file and informational versions together.
       - run: >
           dotnet publish src/RetroCommander.Desktop/RetroCommander.Desktop.csproj
           -c Release -r ${{ matrix.rid }} --self-contained true -o out/${{ matrix.rid }}
+          -p:Version=${{ steps.ver.outputs.version }}
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true

@@ -793,13 +793,24 @@ public partial class MainWindow : Window
         SetStatus("Refreshed");
     }
 
+    private static string GetDisplayVersion()
+    {
+        var info = (System.Reflection.Assembly.GetEntryAssembly() ?? typeof(MainWindow).Assembly)
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false);
+        if (info.Length == 0)
+            return "unknown";
+        var text = ((System.Reflection.AssemblyInformationalVersionAttribute)info[0]).InformationalVersion;
+        var plus = text.IndexOf('+');
+        return plus >= 0 ? text.Substring(0, plus) : text;
+    }
+
     private async void OnAboutClick(object? sender, RoutedEventArgs e)
     {
         var about = new Window
         {
             Title = "About RetroCommander",
             Width = 380,
-            Height = 240,
+            Height = 270,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
@@ -819,7 +830,9 @@ public partial class MainWindow : Window
 
         var subtitle = new TextBlock
         {
-            Text = "Retro Filesystem Manager",
+            // InformationalVersion carries the full version, including a -rc1 style suffix, and the
+            // release build sets it from the git tag. The +commit part the SDK appends is cut off.
+            Text = "Retro Filesystem Manager\nVersion " + GetDisplayVersion(),
             TextAlignment = Avalonia.Media.TextAlignment.Center,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
