@@ -1,16 +1,62 @@
+# Build and test on every push and pull request.
+#
+# RetroCommander references RetroIO.* packages as 0.1.0-local.*, and those are not on nuget.org yet.
+# So the `feed` job checks out RetroCoreLabs/RetroIO, packs it into a local folder feed (the same
+# way RetroIO's eng/publish-local.ps1 does, version suffix local.<timestamp>) and hands the folder
+# to the build job as an artifact. The build job points the nuget.config source called `local` at
+# that folder: the repo file names a folder beside the checkout, which does not exist on a runner.
+# release.yml does the same. When the packages are on nuget.org, delete the feed job, the
+# `needs: feed` line and the two feed steps in build.
 name: build
 on:
   push:
     branches: [ main ]
   pull_request:
+env:
+  # The RetroIO branch, tag or commit the build uses. `main` follows whatever RetroIO is now.
+  RETROIO_REF: main
 jobs:
+  feed:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: RetroCoreLabs/RetroIO
+          ref: ${{ env.RETROIO_REF }}
+          path: retroio
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: retroio/global.json
+      - name: Pack RetroIO into a feed folder
+        shell: pwsh
+        run: |
+          $stamp = Get-Date -Format 'yyyyMMddHHmmss'
+          $sln = @('retroio/RetroIO.slnx', 'retroio/RetroIO.sln') | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $sln) { throw 'no RetroIO.slnx or RetroIO.sln in the checkout' }
+          dotnet pack $sln -c Release -nodeReuse:false -o feed -p:VersionSuffix="local.$stamp"
+          if ($LASTEXITCODE -ne 0) { throw 'pack failed' }
+          Get-ChildItem feed -Filter *.nupkg | Select-Object -ExpandProperty Name
+      - uses: actions/upload-artifact@v4
+        with:
+          name: retroio-feed
+          path: feed/*.nupkg
+          if-no-files-found: error
+
   build:
+    needs: feed
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: retroio-feed
+          path: ${{ runner.temp }}/localfeed
+      - name: Point the local feed at the RetroIO packages
+        shell: pwsh
+        run: dotnet nuget update source local --source "${{ runner.temp }}/localfeed" --configfile nuget.config
       # No solution filename here on purpose: `dotnet new sln` writes RetroCommander.slnx on SDK 10
       # and RetroCommander.sln on older ones, and a bare `dotnet <verb>` resolves whichever is in the
       # working directory.
