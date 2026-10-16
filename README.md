@@ -7,7 +7,7 @@ DragonDOS, FAT, UNIX V7, FFS and the rest — alongside ordinary directories and
 [![release](https://img.shields.io/github/v/release/RetroCoreLabs/RetroCommander)](https://github.com/RetroCoreLabs/RetroCommander/releases)
 [![licence](https://img.shields.io/github/license/RetroCoreLabs/RetroCommander)](LICENSE)
 [![downloads](https://img.shields.io/github/downloads/RetroCoreLabs/RetroCommander/total)](https://github.com/RetroCoreLabs/RetroCommander/releases)
-[What it does](#why-this-repo-exists) Â· [Prerequisites](#prerequisites) Â· [The formats](#what-it-sits-on) Â· [About the disk formats](#about-the-disk-formats)
+[What it does](#why-this-repo-exists) · [Prerequisites](#prerequisites) · [The formats](#what-it-sits-on) · [About the disk formats](#about-the-disk-formats)
 
 <!-- A 5-15 second recording: two panes open, a D64 image on one side and a folder on the
      other, a file dragged across. Under 10 MB. Uncomment when the capture exists.
