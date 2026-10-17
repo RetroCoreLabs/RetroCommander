@@ -26,12 +26,12 @@ jobs:
           path: retroio
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: retroio/global.json
+          global-json-file: retroio/src/global.json
       - name: Pack RetroIO into a feed folder
         shell: pwsh
         run: |
           $stamp = Get-Date -Format 'yyyyMMddHHmmss'
-          $sln = @('retroio/RetroIO.slnx', 'retroio/RetroIO.sln') | Where-Object { Test-Path $_ } | Select-Object -First 1
+          $sln = @('retroio/src/RetroIO.slnx', 'retroio/src/RetroIO.sln') | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $sln) { throw 'no RetroIO.slnx or RetroIO.sln in the checkout' }
           dotnet pack $sln -c Release -nodeReuse:false -o feed -p:VersionSuffix="local.$stamp"
           if ($LASTEXITCODE -ne 0) { throw 'pack failed' }
