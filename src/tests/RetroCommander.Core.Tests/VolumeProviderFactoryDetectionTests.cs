@@ -51,7 +51,7 @@ namespace RetroCommander.Core.Tests
             // The business logic being tested is:
             // - If BSD confidence > 0.5, use BSD driver
             // - Only use NDFS if confidence > 0.8 AND significantly higher than BSD (>0.2 difference)
-            
+
             // For now, we test that the factory is initialized correctly
             Assert.That(_factory, Is.Not.Null);
         }
@@ -78,7 +78,7 @@ namespace RetroCommander.Core.Tests
             // This tests the URN scheme extraction logic
             // We can't directly test private methods, but we can test through public API
             // The ExtractScheme method is private, so we test indirectly through CreatePanelAsync behavior
-            
+
             // For now, verify the factory supports BSD URNs
             var supportsBsd = _factory.SupportsUrn("bsd:///C:/test.img");
             Assert.That(supportsBsd, Is.True);

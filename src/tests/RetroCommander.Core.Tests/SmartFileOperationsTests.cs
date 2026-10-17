@@ -8,11 +8,11 @@
 // RetroCommander.Core.Tests -- Unit tests for SmartFileOperations
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using Moq;
 using NUnit.Framework;
 using RetroCommander.Core.Abstractions;

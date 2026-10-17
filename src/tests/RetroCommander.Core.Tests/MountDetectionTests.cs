@@ -12,8 +12,8 @@ using System.Linq;
 using NUnit.Framework;
 using RetroCommander.Core.Managers;
 using RetroCommander.Core.Providers;
-using RetroIO.Storage.Local;
 using RetroIO.Storage.Core.Utilities;
+using RetroIO.Storage.Local;
 
 namespace RetroCommander.Core.Tests
 {

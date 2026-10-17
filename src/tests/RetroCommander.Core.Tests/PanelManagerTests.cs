@@ -8,12 +8,12 @@
 // RetroCommander.Core.Tests -- Unit tests for PanelManager business logic
 
 using System;
+using Moq;
 using NUnit.Framework;
 using RetroCommander.Core.Abstractions;
 using RetroCommander.Core.Managers;
 using RetroCommander.Core.Providers;
 using RetroIO.Storage.Local;
-using Moq;
 
 namespace RetroCommander.Core.Tests
 {

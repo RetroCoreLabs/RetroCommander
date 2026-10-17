@@ -11,13 +11,13 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Moq;
 using NUnit.Framework;
 using RetroCommander.Core.Abstractions;
 using RetroCommander.Core.Logging;
 using RetroCommander.Core.Managers;
 using RetroCommander.Core.Providers;
 using RetroIO.Storage.Local;
-using Moq;
 
 namespace RetroCommander.Core.Tests
 {
@@ -40,7 +40,7 @@ namespace RetroCommander.Core.Tests
         {
             _mockFactory = new Mock<IVolumeProviderFactory>();
             _mockLogger = new Mock<IRetroCommanderLogger>();
-            
+
             var driverFactory = new DriverFactory();
             var realFactory = new VolumeProviderFactory(null, driverFactory, null, _mockLogger.Object);
             _panelManager = new PanelManager(realFactory);

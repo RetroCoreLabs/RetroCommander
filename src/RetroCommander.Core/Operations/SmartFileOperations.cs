@@ -8,8 +8,8 @@
 using System.Text;
 using RetroCommander.Core.Abstractions;
 using RetroCommander.Core.Logging;
-using RetroCommander.Core.Providers;
 using RetroCommander.Core.PropertyBags;
+using RetroCommander.Core.Providers;
 using RetroCommander.Core.Transfer;
 using RetroIO.Storage.Ndfs.PropertyBags;
 
