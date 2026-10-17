@@ -15,7 +15,7 @@ like, and what will get a change sent back.
 
 ```powershell
 # from the repository root
-.\build.ps1
+.\src\build.ps1
 ```
 
 `build.ps1` builds, runs the tests, and publishes each application as a single self-contained
@@ -84,7 +84,7 @@ must not appear in anything new.
 ## Documentation changes
 
 ```powershell
-python eng\check-docs.py
+python src\eng\check-docs.py
 ```
 
 It must exit 0. It fails on a relative link that does not resolve, a relative link that escapes
@@ -120,4 +120,4 @@ build-from-source, every application in a table linking its own README, licence 
 
 ## Licence
 
-By contributing you agree your work is licensed under the MIT licence in [LICENSE](LICENSE).
+By contributing you agree your work is licensed under the MIT licence in [LICENSE](../LICENSE).

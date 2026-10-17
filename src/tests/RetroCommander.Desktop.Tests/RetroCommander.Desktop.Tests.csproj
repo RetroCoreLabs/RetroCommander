@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>RetroCommander.Core.Tests</AssemblyName>
-    <RootNamespace>RetroCommander.Core.Tests</RootNamespace>
+    <AssemblyName>RetroCommander.Desktop.Tests</AssemblyName>
+    <RootNamespace>RetroCommander.Desktop.Tests</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- The UI project is a WinExe (Avalonia app); referencing it for view-model tests is fine. -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,15 +18,14 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Moq" />
+    <!-- Drives real Avalonia windows/controls (no real display needed) so dialog logic — combo
+         selection, panel visibility toggles, live preview text — can be verified directly instead
+         of only by manual click-through. -->
+    <PackageReference Include="Avalonia.Headless.NUnit" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\RetroCommander.Core\RetroCommander.Core.csproj" />
-    <PackageReference Include="RetroIO.Storage.Core" />
-    <PackageReference Include="RetroIO.Storage.Local" />
-    <PackageReference Include="RetroIO.Storage.Ndfs" />
+    <ProjectReference Include="..\..\RetroCommander.Desktop\RetroCommander.Desktop.csproj" />
   </ItemGroup>
 
 </Project>
-

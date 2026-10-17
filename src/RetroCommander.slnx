@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/RetroCommander.Core/RetroCommander.Core.csproj" />
-    <Project Path="src/RetroCommander.Desktop/RetroCommander.Desktop.csproj" />
+    <Project Path="RetroCommander.Core/RetroCommander.Core.csproj" />
+    <Project Path="RetroCommander.Desktop/RetroCommander.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/RetroCommander.Core.Tests/RetroCommander.Core.Tests.csproj" />

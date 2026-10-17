@@ -1,7 +1,10 @@
 ﻿//
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// RetroCore Labs — https://github.com/RetroCoreLabs
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
+//
+
 // RetroCommander.Desktop.Tests -- Headless-driven tests for the unified NewImageDialog: constructs the
 // real Window and drives it the way a user would (selecting a format in the left list, changing
 // combos, typing names) and asserts on panel visibility, live preview text, inline validation, and
@@ -11,7 +14,6 @@
 // ComboBox values from INSIDE a Task.Run body, which throws "Call from invalid thread" — Avalonia
 // controls may only be touched on the UI thread. CreateNdfs_OnBackgroundThread_DoesNotTouchUi is
 // the regression guard for exactly that.
-//
 
 using System;
 using System.IO;

@@ -72,8 +72,8 @@ No tagged release yet, so the release and download badges above are empty until 
 
 ```powershell
 # from the repository root
-.\build.ps1
-publish\win-x64\RetroCommander.exe
+.\src\build.ps1
+src\publish\win-x64\RetroCommander.exe
 ```
 
 Until the RetroIO packages are on nuget.org they come from the local feed, so **a fresh CI run is red until the
@@ -152,7 +152,7 @@ data loss. See `RetroIO.Storage.Core` (`RetroIO/src/RetroIO.Storage.Core/README.
 
 | Project | Covers |
 |---|---|
-| `tests/RetroCommander.Desktop.Tests` | The application |
+| `src/tests/RetroCommander.Desktop.Tests` | The application |
 
 The **drivers** are tested in RetroIO, against real disk images — `src/RetroIO.Storage.Local/tests`. A format bug
 found here belongs there as a test, because a driver fixed only in the file manager is a driver still broken for
@@ -185,14 +185,14 @@ namespace, and drag.
 - Names follow the workspace naming standard; diagrams follow the workspace Mermaid palette. Both live one level
   up in the workspace root, **outside this repository**, so they are paths rather than links: `NAMING.md` and
   `MERMAID_COLOR_STANDARDS.md`.
-- `python eng/check-docs.py` checks every link and diagram here.
+- `python src/eng/check-docs.py` checks every link and diagram here.
 - The org is **RetroCoreLabs**. `HackerCorpLabs` is retired.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get a build running, what the code is
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for how to get a build running, what the code is
 expected to look like, and what will get a change sent back. A security problem goes through
-[SECURITY.md](SECURITY.md) and never a public issue.
+[SECURITY.md](.github/SECURITY.md) and never a public issue.
 
 ## Licence
 

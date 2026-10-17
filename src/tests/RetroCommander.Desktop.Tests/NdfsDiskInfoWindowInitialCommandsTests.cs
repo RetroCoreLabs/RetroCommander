@@ -1,13 +1,15 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// RetroCore Labs — https://github.com/RetroCoreLabs
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
+//
+
 // RetroCommander.Desktop.Tests -- Headless-driven tests for the "Initial Commands" tab of
 // NdfsDiskInfoWindow. Construct the REAL window over a live NDFS mount (the repo's BIGDISK0-L.IMG
 // SINTRAN L pack) and drive it the way a user would: read the editor, click Save, toggle read-only.
 // These complement the pure API tests in RetroIO.Tests/NdfsInitialCommandsTests.cs by proving the
 // tab wiring (load into TextBox, Save round-trips to disk, read-only disables editing) actually works.
-//
 
 using System;
 using System.IO;

@@ -1,9 +1,11 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// RetroCore Labs — https://github.com/RetroCoreLabs
-// RetroCommander.Core.Tests -- Unit tests for VolumeProviderFactory detection logic
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
 //
+
+// RetroCommander.Core.Tests -- Unit tests for VolumeProviderFactory detection logic
 
 using System;
 using System.IO;

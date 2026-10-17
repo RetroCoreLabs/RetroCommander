@@ -1,12 +1,14 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// RetroCore Labs — https://github.com/RetroCoreLabs
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
+//
+
 // RetroCommander.Desktop.Tests -- Real, headless-driven tests for CreatePcImageDialog: constructs the
 // actual Window/ComboBox/TextBlock instances (via Avalonia.Headless, no real display) and drives
 // them the way a user would — selecting combo items and reading back visibility/preview text —
 // rather than only asserting on the underlying PcImageFactory library.
-//
 
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;

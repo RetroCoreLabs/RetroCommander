@@ -1,8 +1,8 @@
 //
 // SPDX-License-Identifier: MIT
-// Copyright (c) 1985-2026 Ronny Hansen 
-// RetroCore Labs — https://github.com/RetroCoreLabs
-// RetroFS -- Accessing yesterday's data with today's standards"
+// Copyright (c) 1985-2026 Ronny Hansen
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
 //
 
 namespace RetroCommander.Core.UI;

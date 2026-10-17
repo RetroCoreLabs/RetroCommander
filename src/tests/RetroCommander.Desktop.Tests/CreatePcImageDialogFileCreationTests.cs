@@ -1,12 +1,14 @@
 //
 // SPDX-License-Identifier: MIT
 // Copyright (c) 1985-2026 Ronny Hansen
-// RetroCore Labs — https://github.com/RetroCoreLabs
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
+//
+
 // RetroCommander.Desktop.Tests -- Exercises the EXACT code path the real "Create Image" button
 // invokes (CreatePcImageDialog.CreateImageFileAsync), writing a real file to disk and mounting it
 // back through PcFloppyDriver — the same driver RetroCommander itself uses — rather than only
 // testing PcImageFactory directly or the dialog's combo/preview logic in isolation.
-//
 
 using System;
 using System.IO;
