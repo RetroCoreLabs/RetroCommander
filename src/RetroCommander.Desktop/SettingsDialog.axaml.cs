@@ -24,7 +24,7 @@ namespace RetroCommander.Desktop
 
         // Curated monospace choices for the file viewer. Tag is the actual font-family stack;
         // the leading family is preferred, with fallbacks so it always resolves to a mono font.
-        private static readonly (string Label, string Family)[] ViewerFonts =
+        private static readonly (string Label, string Family)[] s_viewerFonts =
         {
             ("Consolas (default)", UiSettings.DefaultViewerFontFamily),
             ("Cascadia Mono", "Cascadia Mono, Consolas, monospace"),
@@ -34,7 +34,7 @@ namespace RetroCommander.Desktop
         };
 
         // Selectable viewer font sizes (points).
-        private static readonly double[] ViewerSizes = { 9, 10, 11, 12, 13, 14, 16, 18, 20 };
+        private static readonly double[] s_viewerSizes = { 9, 10, 11, 12, 13, 14, 16, 18, 20 };
 
         public SettingsDialog()
         {
@@ -178,15 +178,15 @@ namespace RetroCommander.Desktop
                 // Font family combo.
                 ViewerFontCombo.Items.Clear();
                 int fontIndex = 0;
-                for (int i = 0; i < ViewerFonts.Length; i++)
+                for (int i = 0; i < s_viewerFonts.Length; i++)
                 {
                     ComboBoxItem item = new ComboBoxItem
                     {
-                        Content = ViewerFonts[i].Label,
-                        Tag = ViewerFonts[i].Family
+                        Content = s_viewerFonts[i].Label,
+                        Tag = s_viewerFonts[i].Family
                     };
                     ViewerFontCombo.Items.Add(item);
-                    if (ViewerFonts[i].Family == s.ViewerFontFamily)
+                    if (s_viewerFonts[i].Family == s.ViewerFontFamily)
                         fontIndex = i;
                 }
                 ViewerFontCombo.SelectedIndex = fontIndex;
@@ -194,16 +194,16 @@ namespace RetroCommander.Desktop
                 // Size combo.
                 ViewerSizeCombo.Items.Clear();
                 int sizeIndex = 0;
-                for (int i = 0; i < ViewerSizes.Length; i++)
+                for (int i = 0; i < s_viewerSizes.Length; i++)
                 {
                     ComboBoxItem item = new ComboBoxItem
                     {
-                        Content = ViewerSizes[i].ToString("0"),
-                        Tag = ViewerSizes[i]
+                        Content = s_viewerSizes[i].ToString("0"),
+                        Tag = s_viewerSizes[i]
                     };
                     ViewerSizeCombo.Items.Add(item);
                     // Closest match wins so a hand-edited odd size still selects sensibly.
-                    if (ViewerSizes[i] <= s.ViewerFontSize)
+                    if (s_viewerSizes[i] <= s.ViewerFontSize)
                         sizeIndex = i;
                 }
                 ViewerSizeCombo.SelectedIndex = sizeIndex;

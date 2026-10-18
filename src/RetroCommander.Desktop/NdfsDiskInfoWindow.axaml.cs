@@ -137,7 +137,7 @@ public partial class NdfsDiskInfoWindow : Window
         // Read-only notice + action availability. Every write action (rename, clear-entered) is
         // greyed out on a read-only mount — the driver's write guards would refuse them anyway, so
         // disabling them up front is honest rather than letting the user click into a failure.
-        const string READ_ONLY_TIP = "Disabled: this volume is mounted read-only. Re-mount it "
+        const string readOnlyTip = "Disabled: this volume is mounted read-only. Re-mount it "
                                      + "read-write (right-click the image → \"Open Read/Write\") to enable this.";
 
         ReadOnlyNotice.IsVisible = _isReadOnly;
@@ -145,7 +145,7 @@ public partial class NdfsDiskInfoWindow : Window
         RenameTextBox.Text = m.DirectoryName;
         RenameButton.IsEnabled = !_isReadOnly;
         RenameTextBox.IsEnabled = !_isReadOnly;
-        ToolTip.SetTip(RenameButton, _isReadOnly ? READ_ONLY_TIP : "Rename the NDFS directory (volume).");
+        ToolTip.SetTip(RenameButton, _isReadOnly ? readOnlyTip : "Rename the NDFS directory (volume).");
 
         // Clear-entered row only makes sense when the volume is actually entered.
         ClearEnteredRow.IsVisible = m.IsEntered;
@@ -158,7 +158,7 @@ public partial class NdfsDiskInfoWindow : Window
 
             ClearEnteredButton.IsEnabled = !_isReadOnly;
             ToolTip.SetTip(ClearEnteredButton, _isReadOnly
-                ? READ_ONLY_TIP
+                ? readOnlyTip
                 : "Clear the 'directory entered' interlock (flag-word bit 15) and rewrite the checksum.");
         }
     }

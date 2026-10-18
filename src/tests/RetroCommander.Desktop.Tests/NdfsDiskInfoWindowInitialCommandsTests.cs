@@ -30,7 +30,7 @@ namespace RetroCommander.Desktop.Tests
     public class NdfsDiskInfoWindowInitialCommandsTests
     {
         // The stock SINTRAN L07 initial commands present on BIGDISK0-L.IMG.
-        private static readonly string[] StockCommands =
+        private static readonly string[] s_stockCommands =
         {
             "ENTER-DIR,,DI-75-1,0", "ENTER-DIR,,DI-74-1,0", "SET-AVAIL"
         };
@@ -105,7 +105,7 @@ namespace RetroCommander.Desktop.Tests
 
                 string[] lines = (window.InitCmdEditor.Text ?? string.Empty)
                     .Replace("\r\n", "\n").Split('\n');
-                Assert.That(lines, Is.EqualTo(StockCommands));
+                Assert.That(lines, Is.EqualTo(s_stockCommands));
 
                 // Provenance line names SEGFIL0.
                 Assert.That(window.InitCmdInfoText.Text, Does.Contain("SEGFIL0"));

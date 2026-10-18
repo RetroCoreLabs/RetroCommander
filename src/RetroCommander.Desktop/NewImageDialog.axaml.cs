@@ -44,7 +44,7 @@ public partial class NewImageDialog : Window
     private bool _loading = true;
 
     // NDFS drive templates, in the order they appear in the combo.
-    private static readonly NdfsImageTemplate[] NdfsTemplates =
+    private static readonly NdfsImageTemplate[] s_ndfsTemplates =
     {
         NdfsImageTemplate.Floppy360KB,
         NdfsImageTemplate.Floppy12MB,
@@ -54,7 +54,7 @@ public partial class NewImageDialog : Window
         NdfsImageTemplate.Custom
     };
 
-    private static readonly NdfsBootLoaderType[] NdfsBootLoaders =
+    private static readonly NdfsBootLoaderType[] s_ndfsBootLoaders =
     {
         NdfsBootLoaderType.None,
         NdfsBootLoaderType.Floppy,
@@ -80,15 +80,15 @@ public partial class NewImageDialog : Window
     private void PopulateNdfs()
     {
         var items = new List<ComboBoxItem>();
-        for (int i = 0; i < NdfsTemplates.Length; i++)
-            items.Add(new ComboBoxItem { Content = DescribeNdfsTemplate(NdfsTemplates[i]) });
+        for (int i = 0; i < s_ndfsTemplates.Length; i++)
+            items.Add(new ComboBoxItem { Content = DescribeNdfsTemplate(s_ndfsTemplates[i]) });
 
         NdfsTemplateCombo.ItemsSource = items;
         NdfsTemplateCombo.SelectedIndex = 2; // SMD 75MB
 
         var boots = new List<ComboBoxItem>();
-        for (int i = 0; i < NdfsBootLoaders.Length; i++)
-            boots.Add(new ComboBoxItem { Content = NdfsBootLoaders[i].ToString() });
+        for (int i = 0; i < s_ndfsBootLoaders.Length; i++)
+            boots.Add(new ComboBoxItem { Content = s_ndfsBootLoaders[i].ToString() });
 
         NdfsBootCombo.ItemsSource = boots;
         NdfsBootCombo.SelectedIndex = 0; // None — a valid NDFS volume need not be bootable
@@ -233,7 +233,7 @@ public partial class NewImageDialog : Window
     private NdfsImageTemplate SelectedNdfsTemplate()
     {
         int i = NdfsTemplateCombo.SelectedIndex;
-        return (i >= 0 && i < NdfsTemplates.Length) ? NdfsTemplates[i] : NdfsImageTemplate.Smd75MB;
+        return (i >= 0 && i < s_ndfsTemplates.Length) ? s_ndfsTemplates[i] : NdfsImageTemplate.Smd75MB;
     }
 
     // ---------------------------------------------------------------- preview + validation
@@ -505,8 +505,8 @@ public partial class NewImageDialog : Window
                 uint.TryParse((NdfsCustomPages.Text ?? "0").Trim(), out r.NdfsCustomPages);
 
             int bootIdx = NdfsBootCombo.SelectedIndex;
-            r.NdfsBoot = (bootIdx >= 0 && bootIdx < NdfsBootLoaders.Length)
-                ? NdfsBootLoaders[bootIdx]
+            r.NdfsBoot = (bootIdx >= 0 && bootIdx < s_ndfsBootLoaders.Length)
+                ? s_ndfsBootLoaders[bootIdx]
                 : NdfsBootLoaderType.None;
 
             if (r.NdfsIncludeExtInfo && !r.NdfsBlank)

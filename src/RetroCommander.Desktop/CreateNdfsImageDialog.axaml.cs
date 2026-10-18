@@ -138,7 +138,7 @@ public partial class CreateNdfsImageDialog : Window
             }
             else
             {
-                // Hard-coded template values (from NdfsTemplates)
+                // Hard-coded template values (from s_ndfsTemplates)
                 (ndfsPages, fileBlocks, controllerName) = template switch
                 {
                     NdfsImageTemplate.Floppy360KB => (154u, 154u, "Floppy"),
@@ -147,7 +147,7 @@ public partial class CreateNdfsImageDialog : Window
                     // file_blocks MUST be the device size (36864), not 36360. The old 36360 was
                     // SMALLER than the 36396 pages of declared capacity, so the previewed image was
                     // 36 pages short of its own size. Corrected to the measured Micropolis 1325
-                    // device size = 36864 pages = 72.0 MiB exactly, matching NdfsTemplates.Winchester74MB
+                    // device size = 36864 pages = 72.0 MiB exactly, matching s_ndfsTemplates.Winchester74MB
                     // (see NdfsTemplateSpec.cs "BUG FIXED" note and NewImageDialog.axaml.cs which was
                     // already correct). Verified geometry: DISC-BOOT-SECTOR-ANATOMY.md geometry block
                     // (512/9/72/1021/1011) confirms the 1325 Winchester pack.

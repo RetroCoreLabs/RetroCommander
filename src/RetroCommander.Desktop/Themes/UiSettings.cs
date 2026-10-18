@@ -63,10 +63,10 @@ namespace RetroCommander.Desktop.Themes
 
         // ------------------------------------------------------------------
 
-        private static UiSettings? _instance;
+        private static UiSettings? s_instance;
 
         /// <summary>The process-wide settings instance (loaded from disk on first access).</summary>
-        public static UiSettings Instance => _instance ??= Load();
+        public static UiSettings Instance => s_instance ??= Load();
 
         private static string GetSettingsPath()
         {

@@ -117,7 +117,7 @@ namespace RetroCommander.Desktop.Themes
 
         // The brush resource keys referenced throughout the XAML, in the same order the
         // palette exposes its colours below. Keep these two lists aligned.
-        private static readonly string[] BrushKeys =
+        private static readonly string[] s_brushKeys =
         {
             "FluentBackgroundPrimaryBrush",
             "FluentBackgroundSecondaryBrush",
@@ -145,10 +145,10 @@ namespace RetroCommander.Desktop.Themes
         {
             ResourceDictionary rd = new ResourceDictionary();
             string[] hex = def.Palette.ToArray();
-            // BrushKeys and the palette array are intentionally 1:1 in length and order.
-            for (int i = 0; i < BrushKeys.Length; i++)
+            // s_brushKeys and the palette array are intentionally 1:1 in length and order.
+            for (int i = 0; i < s_brushKeys.Length; i++)
             {
-                rd[BrushKeys[i]] = new SolidColorBrush(Color.Parse(hex[i]));
+                rd[s_brushKeys[i]] = new SolidColorBrush(Color.Parse(hex[i]));
             }
             return rd;
         }
@@ -388,7 +388,7 @@ namespace RetroCommander.Desktop.Themes
 
     /// <summary>
     /// A flat colour palette (hex strings). Field ORDER here defines the order returned by
-    /// <see cref="ToArray"/>, which must stay aligned with ThemeManager.BrushKeys.
+    /// <see cref="ToArray"/>, which must stay aligned with ThemeManager.s_brushKeys.
     /// </summary>
     public sealed class Palette
     {

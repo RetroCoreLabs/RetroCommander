@@ -22,7 +22,7 @@ namespace RetroCommander.Desktop;
 /// </summary>
 public partial class EditFileDialog : Window
 {
-    private static readonly Encoding RoundTripEncoding = Encoding.Latin1;
+    private static readonly Encoding s_roundTripEncoding = Encoding.Latin1;
 
     public bool Saved { get; private set; }
     public byte[] EditedData { get; private set; } = Array.Empty<byte>();
@@ -45,7 +45,7 @@ public partial class EditFileDialog : Window
         Title = $"Edit File - {fileName}";
         FileNameText.Text = fileName;
         FileSizeText.Text = FormatFileSize(data.Length);
-        ContentEditor.Text = RoundTripEncoding.GetString(data);
+        ContentEditor.Text = s_roundTripEncoding.GetString(data);
     }
 
     private string FormatFileSize(long bytes)
@@ -59,7 +59,7 @@ public partial class EditFileDialog : Window
 
     private void OnSaveClick(object? sender, RoutedEventArgs e)
     {
-        EditedData = RoundTripEncoding.GetBytes(ContentEditor.Text ?? string.Empty);
+        EditedData = s_roundTripEncoding.GetBytes(ContentEditor.Text ?? string.Empty);
         Saved = true;
         Close();
     }
