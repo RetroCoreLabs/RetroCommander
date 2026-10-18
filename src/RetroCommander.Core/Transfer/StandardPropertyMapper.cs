@@ -24,6 +24,9 @@ public class StandardPropertyMapper : IPropertyMapper
     ///  - <see cref="StandardProperties.FileSize"/> as long.
     ///  - <see cref="StandardProperties.IsDirectory"/>, <see cref="StandardProperties.IsReadOnly"/> and <see cref="StandardProperties.IsHidden"/> as bool.
     ///  - <see cref="StandardProperties.CreatedDate"/>, <see cref="StandardProperties.ModifiedDate"/> and <see cref="StandardProperties.AccessedDate"/> as nullable DateTime.
+    ///
+    /// Virtual so that a mapper for a specific pair of filesystems can copy the standard properties
+    /// through this method and then add its own.
     /// </remarks>
     /// <param name="source">
     /// The bag to read from.
@@ -31,7 +34,7 @@ public class StandardPropertyMapper : IPropertyMapper
     /// <param name="target">
     /// The bag to write to. Values already there under the same keys are replaced.
     /// </param>
-    public void MapProperties(IPropertyBag source, IPropertyBag target)
+    public virtual void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         // Copy standard properties that exist
         CopyIfPresent<string>(source, target, StandardProperties.FileName);

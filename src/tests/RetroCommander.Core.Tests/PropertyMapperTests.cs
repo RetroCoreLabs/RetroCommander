@@ -536,4 +536,55 @@ public class PropertyMapperTests
     }
 
     #endregion
+
+    #region Through the registry (the way SmartFileOperations calls them)
+
+    // The tests above call the concrete mapper classes, where the subclass method is the one
+    // found. The real code gets an IPropertyMapper from the registry, so these go through that.
+    // They failed while the subclass methods hid the base method with "new" instead of
+    // overriding it: only the standard properties were copied and the NDFS/Azure metadata was lost.
+
+    [Test]
+    public void Registry_NdfsToAzure_StoresNdfsMetadataWhenCalledThroughTheInterface()
+    {
+        IPropertyMapper mapper = PropertyMapperRegistry.CreateDefault().GetMapper("NDFS", "Azure");
+        var source = new PropertyBag();
+        var target = new PropertyBag();
+
+        source.SetProperty(StandardProperties.FileName, "test.txt");
+        source.SetProperty(NdfsProperties.UserId, (ushort)42);
+        source.SetProperty(NdfsProperties.UserName, "TestUser");
+
+        mapper.MapProperties(source, target);
+
+        Assert.That(target.GetProperty<string>(StandardProperties.FileName), Is.EqualTo("test.txt"));
+        var metadata = target.GetProperty<Dictionary<string, string>>(AzureProperties.Metadata);
+        Assert.That(metadata, Is.Not.Null);
+        Assert.That(metadata!["ndfs-userid"], Is.EqualTo("42"));
+        Assert.That(metadata["ndfs-username"], Is.EqualTo("TestUser"));
+        Assert.That(target.GetProperty<string>(AzureProperties.ContentType), Is.EqualTo("application/octet-stream"));
+    }
+
+    [Test]
+    public void Registry_AzureToNdfs_RestoresNdfsPropertiesWhenCalledThroughTheInterface()
+    {
+        IPropertyMapper mapper = PropertyMapperRegistry.CreateDefault().GetMapper("Azure", "NDFS");
+        var source = new PropertyBag();
+        var target = new PropertyBag();
+
+        source.SetProperty(StandardProperties.FileName, "test.txt");
+        source.SetProperty(AzureProperties.Metadata, new Dictionary<string, string>
+        {
+            ["ndfs-userid"] = "42",
+            ["ndfs-username"] = "TestUser"
+        });
+
+        mapper.MapProperties(source, target);
+
+        Assert.That(target.GetProperty<string>(StandardProperties.FileName), Is.EqualTo("test.txt"));
+        Assert.That(target.GetProperty<ushort>(NdfsProperties.UserId), Is.EqualTo((ushort)42));
+        Assert.That(target.GetProperty<string>(NdfsProperties.UserName), Is.EqualTo("TestUser"));
+    }
+
+    #endregion
 }

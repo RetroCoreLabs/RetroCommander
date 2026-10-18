@@ -26,9 +26,8 @@ public class AzureToNdfsPropertyMapper : StandardPropertyMapper
     /// the source's <see cref="StandardProperties.ModifiedDate"/> is used for it when present.
     /// </para>
     /// <para>
-    /// This method hides <see cref="StandardPropertyMapper.MapProperties"/> with <c>new</c> and does not override it.
-    /// A call made through an <see cref="IPropertyMapper"/> or <see cref="StandardPropertyMapper"/> reference runs the base method,
-    /// so only the standard properties are copied.
+    /// This method overrides <see cref="StandardPropertyMapper.MapProperties"/>, so it also runs when the mapper
+    /// is used through an <see cref="IPropertyMapper"/> reference, as the registry hands it out.
     /// </para>
     /// </remarks>
     /// <param name="source">
@@ -37,7 +36,7 @@ public class AzureToNdfsPropertyMapper : StandardPropertyMapper
     /// <param name="target">
     /// The bag to fill with standard and NDFS properties.
     /// </param>
-    public new void MapProperties(IPropertyBag source, IPropertyBag target)
+    public override void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         // First copy standard properties
         base.MapProperties(source, target);

@@ -26,9 +26,8 @@ public class NdfsToAzurePropertyMapper : StandardPropertyMapper
     /// of these was found. The content type is set to application/octet-stream when the target has none.
     /// </para>
     /// <para>
-    /// This method hides <see cref="StandardPropertyMapper.MapProperties"/> with <c>new</c> and does not override it.
-    /// A call made through an <see cref="IPropertyMapper"/> or <see cref="StandardPropertyMapper"/> reference runs the base method,
-    /// so only the standard properties are copied.
+    /// This method overrides <see cref="StandardPropertyMapper.MapProperties"/>, so it also runs when the mapper
+    /// is used through an <see cref="IPropertyMapper"/> reference, as the registry hands it out.
     /// </para>
     /// </remarks>
     /// <param name="source">
@@ -37,7 +36,7 @@ public class NdfsToAzurePropertyMapper : StandardPropertyMapper
     /// <param name="target">
     /// The bag to fill with standard and Azure properties.
     /// </param>
-    public new void MapProperties(IPropertyBag source, IPropertyBag target)
+    public override void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         // First copy standard properties
         base.MapProperties(source, target);
