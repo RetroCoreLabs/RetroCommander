@@ -122,21 +122,28 @@ public static class CoreDemo
     {
         Console.WriteLine("\n=== Demo 2: NDFS Disk Image Mounting ===");
 
-        // Look for test NDFS images
+        // Look for test NDFS images, relative to the repository's src folder. They are found by
+        // walking up from the running program's folder, so no machine-specific path is needed.
         var testImagePaths = new[]
         {
-            @"E:\Dev\Ronny\RetroFS\demo\test-images\ndfs\test.ndfs",
-            @"E:\Dev\Ronny\RetroFS\test.ndfs"
+            Path.Combine("demo", "test-images", "ndfs", "test.ndfs"),
+            "test.ndfs"
         };
 
         string? ndfsImagePath = null;
-        for (int i = 0; i < testImagePaths.Length; i++)
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && ndfsImagePath == null)
         {
-            if (File.Exists(testImagePaths[i]))
+            for (int i = 0; i < testImagePaths.Length; i++)
             {
-                ndfsImagePath = testImagePaths[i];
-                break;
+                string candidate = Path.Combine(dir.FullName, testImagePaths[i]);
+                if (File.Exists(candidate))
+                {
+                    ndfsImagePath = candidate;
+                    break;
+                }
             }
+            dir = dir.Parent;
         }
 
         if (ndfsImagePath == null)

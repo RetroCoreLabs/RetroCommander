@@ -38,7 +38,21 @@ namespace RetroCommander.Core.Tests
     [TestFixture]
     public class VolumeProviderFactoryMbrPartitionTests
     {
-        private const string HardDiskImage = @"C:\Users\ronny\OneDrive\Documents\RetroFS\test-images\pc\hd10.img";
+        // src/demo/test-images/pc/hd10.img, found by walking up from the test's bin folder. The
+        // demo folder is not in git; when the image is absent the fixture is ignored (SetUp).
+        private static readonly string s_hardDiskImage = FindDemoImage(Path.Combine("demo", "test-images", "pc", "hd10.img"));
+
+        private static string FindDemoImage(string relativePath)
+        {
+            var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null)
+            {
+                string candidate = Path.Combine(dir.FullName, relativePath);
+                if (File.Exists(candidate)) return candidate;
+                dir = dir.Parent;
+            }
+            return relativePath;
+        }
 
         private DriverFactory _driverFactory = null!;
         private VolumeProviderFactory _factory = null!;
@@ -47,9 +61,9 @@ namespace RetroCommander.Core.Tests
         [SetUp]
         public void SetUp()
         {
-            if (!File.Exists(HardDiskImage))
+            if (!File.Exists(s_hardDiskImage))
             {
-                Assert.Ignore($"Test image not found: {HardDiskImage}");
+                Assert.Ignore($"Test image not found: {s_hardDiskImage}");
             }
 
             _driverFactory = new DriverFactory();
@@ -59,7 +73,7 @@ namespace RetroCommander.Core.Tests
             // Work on a throwaway copy — VolumeProviderFactory mounts read-write when it can, and
             // these tests must not modify the real fixture.
             _tempImagePath = Path.Combine(Path.GetTempPath(), "mbr_test_" + Path.GetRandomFileName() + ".img");
-            File.Copy(HardDiskImage, _tempImagePath, overwrite: true);
+            File.Copy(s_hardDiskImage, _tempImagePath, overwrite: true);
         }
 
         [TearDown]

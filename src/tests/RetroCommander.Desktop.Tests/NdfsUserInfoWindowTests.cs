@@ -38,7 +38,9 @@ namespace RetroCommander.Desktop.Tests
 
         private static string? ResolveRealImage()
         {
-            const string rel = @"demo\test-images\ndfs\BIGDISK0-L.IMG";
+            // src/demo/test-images/ndfs/BIGDISK0-L.IMG, found by walking up from the test's bin
+            // folder. Path.Combine per segment so the same lookup works on Windows and Linux.
+            string rel = Path.Combine("demo", "test-images", "ndfs", "BIGDISK0-L.IMG");
             var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
             while (dir != null)
             {
@@ -46,13 +48,6 @@ namespace RetroCommander.Desktop.Tests
                 if (File.Exists(candidate)) return candidate;
                 dir = dir.Parent;
             }
-            string[] absolutes =
-            {
-                @"E:\Dev\Ronny\RetroFS\demo\test-images\ndfs\BIGDISK0-L.IMG",
-                "/mnt/e/Dev/Ronny/RetroFS/demo/test-images/ndfs/BIGDISK0-L.IMG",
-            };
-            for (int i = 0; i < absolutes.Length; i++)
-                if (File.Exists(absolutes[i])) return absolutes[i];
             return null;
         }
 
