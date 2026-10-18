@@ -1,0 +1,7 @@
+/* The modern template does not size the header logo, so an SVG with only a viewBox
+   (the app icon) renders at its natural width and covers the menu. Fit it to the bar. */
+#logo {
+  height: 1.75rem;
+  width: auto;
+  margin-right: 0.5rem;
+}
