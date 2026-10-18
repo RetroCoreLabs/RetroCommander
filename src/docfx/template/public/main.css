@@ -1,3 +1,86 @@
 /* The modern template puts no height on the header logo; size it here so any icon file works. */
 .navbar .navbar-brand #logo { height: 40px; width: auto; margin-right: .5rem; }
 .navbar .navbar-brand { flex-shrink: 0; }
+
+/* Keep the site name from being squeezed, and a menu entry from breaking over two lines. */
+.navbar .navbar-brand {
+  flex-shrink: 0;
+}
+
+.navbar .nav-link {
+  white-space: nowrap;
+}
+
+/* Between 768 and 992 px the menu and the search box compete for the bar. Keep the menu at its
+   natural width and let the search box give way. */
+.navbar .navbar-nav {
+  flex-shrink: 0;
+}
+
+.navbar form#search {
+  min-width: 0;
+  flex: 1 1 8rem;
+}
+
+/* The template puts a wbr inside camel-case words, and Chromium breaks there even under
+   nowrap, so "GitHub" is drawn "Git" / "Hub" when the menu is squeezed. Remove the break
+   point and keep each entry at its natural width. */
+.navbar .navbar-nav .nav-item {
+  flex-shrink: 0;
+}
+
+.navbar .navbar-nav .nav-link wbr {
+  display: none;
+}
+
+/* The GitHub entry (the last menu entry) goes to the far right of the header, after the search
+   box and the theme switch, with the GitHub logo in front of the text. The menu list is
+   flattened so its last entry can be ordered after the other header items. */
+.navbar .navbar-nav {
+  display: contents;
+}
+
+.navbar .navbar-nav .nav-item:last-child {
+  order: 100;
+  margin-left: 0.5rem;
+}
+
+.navbar .nav-link[href^="https://github.com/"]::before {
+  font-family: bootstrap-icons;
+  content: "\f3ed";
+  font-size: 1.25rem;
+  vertical-align: -0.15rem;
+  margin-right: 0.4rem;
+}
+
+/* The RetroCore Labs entry: the organisation's profile picture, linking back to the front page
+   of retrocorelabs.github.io. It is the menu entry before GitHub, and goes to the right with it. */
+.navbar .navbar-nav .nav-item:has(> .nav-link[href="https://retrocorelabs.github.io/"]) {
+  order: 99;
+}
+
+.navbar .nav-link[href="https://retrocorelabs.github.io/"]::before {
+  content: "";
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-right: 0.4rem;
+  vertical-align: -0.4rem;
+  border-radius: 4px;
+  background: url("RetroCoreLabs.png") center / contain no-repeat;
+}
+/* Between 768 and 1100 px the header has no room for the words as well: the GitHub and RetroCore
+   Labs entries show only their logos (the text stays in the page for screen readers). */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .navbar .nav-link[href^="https://github.com/"],
+  .navbar .nav-link[href="https://retrocorelabs.github.io/"] {
+    font-size: 0;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+  }
+
+  .navbar .nav-link[href^="https://github.com/"]::before,
+  .navbar .nav-link[href="https://retrocorelabs.github.io/"]::before {
+    margin-right: 0;
+  }
+}
