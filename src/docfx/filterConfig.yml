@@ -1,0 +1,5 @@
+apiRules:
+# Members inherited from Avalonia (Window, TopLevel, Visual ...) are the framework's API, not ours.
+- exclude:
+    uidRegex: ^Avalonia\.
+    type: Member
