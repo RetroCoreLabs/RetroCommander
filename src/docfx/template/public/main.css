@@ -1,0 +1,3 @@
+/* The modern template puts no height on the header logo; size it here so any icon file works. */
+.navbar .navbar-brand #logo { height: 40px; width: auto; margin-right: .5rem; }
+.navbar .navbar-brand { flex-shrink: 0; }

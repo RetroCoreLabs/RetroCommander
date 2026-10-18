@@ -48,7 +48,7 @@
         "branch": "main"
       }
     },
-    "template": [ "default", "modern", "templates/retrocommander" ],
+    "template": [ "default", "modern", "template" ],
     "postProcessors": [ "ExtractSearchIndex" ],
     "keepFileLink": false,
     "disableGitFeatures": false
