@@ -117,12 +117,6 @@ public partial class MainWindow : Window
         var propertyRegistry = PropertyMapperRegistry.CreateDefault();
         _fileOps = new SmartFileOperations(propertyRegistry, _logger);
 
-        // Debug: Add test items FIRST to verify binding works
-        _leftEntries.Add(new FileEntryViewModel(null, "TEST - If you see this, binding works"));
-        _rightEntries.Add(new FileEntryViewModel(null, "TEST - If you see this, binding works"));
-
-        Console.WriteLine($"DEBUG: Added test items. Left count: {_leftEntries.Count}, Right count: {_rightEntries.Count}");
-
         // Enable double-click to navigate
         LeftPanel.DoubleTapped += OnLeftDoubleClick;
         RightPanel.DoubleTapped += OnRightDoubleClick;
@@ -148,10 +142,8 @@ public partial class MainWindow : Window
         // Set ItemsSource when window is fully loaded
         Loaded += (s, e) =>
         {
-            Console.WriteLine("DEBUG: Window Loaded event - setting ItemsSource");
             LeftPanel.ItemsSource = _leftEntries;
             RightPanel.ItemsSource = _rightEntries;
-            Console.WriteLine($"DEBUG: ItemsSource set. Left: {_leftEntries.Count}, Right: {_rightEntries.Count}");
 
             // Wire up sidebar event handlers
             NavigationSidebar.ItemSelected += OnSidebarItemSelected;

@@ -40,7 +40,7 @@ public class LoggingConfiguration
     /// Gets or sets whether log entries should also go to the console. The default is false.
     /// </summary>
     /// <remarks>
-    /// Nothing in the code reads this setting at present; <see cref="UnifiedLogger"/> does not write to the console.
+    /// When true, <see cref="UnifiedLogger"/> writes each line it writes to the log file to standard output as well.
     /// </remarks>
     public bool EnableConsoleOutput { get; set; } = false;
 
@@ -48,7 +48,8 @@ public class LoggingConfiguration
     /// Gets or sets the largest size of the log file, in megabytes. The default is 10.
     /// </summary>
     /// <remarks>
-    /// Nothing in the code reads this setting at present; <see cref="UnifiedLogger"/> moves the file aside at a fixed 10 MB.
+    /// When the log file grows past this size, <see cref="UnifiedLogger"/> moves it aside to a file ending in .old
+    /// and starts a new one. Zero or less turns this off.
     /// </remarks>
     public int MaxLogFileSizeMB { get; set; } = 10;
 
@@ -56,7 +57,9 @@ public class LoggingConfiguration
     /// Gets or sets how many days old log files are kept. The default is 30.
     /// </summary>
     /// <remarks>
-    /// Nothing in the code reads this setting at present; no old log files are deleted.
+    /// When <see cref="UnifiedLogger"/> starts, it deletes files next to the log file that look like old logs
+    /// (same name start, ending in .log or .old) and were last written more than this many days ago.
+    /// Zero or less turns this off.
     /// </remarks>
     public int MaxLogFileAgeDays { get; set; } = 30;
 }

@@ -10,6 +10,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -57,7 +58,8 @@ namespace RetroCommander.Core.Tests
             {
                 CacheDirectory = _testCacheDirectory,
                 MaxCacheSizeGB = maxSizeGB,
-                EnableCaching = true
+                EnableCaching = true,
+                MinFileSizeToCache = 0 // the tests cache tiny strings
             };
         }
 
@@ -541,7 +543,8 @@ namespace RetroCommander.Core.Tests
             {
                 CacheDirectory = _testCacheDirectory,
                 MaxCacheSizeGB = 1, // 1GB - we'll need large files to test eviction
-                EnableCaching = true
+                EnableCaching = true,
+                MinFileSizeToCache = 0
             };
 
             var cache = new FileSystemCacheManager(config);
@@ -883,6 +886,206 @@ namespace RetroCommander.Core.Tests
             using var postStream = await cache.GetOrFetchAsync(postUrn,
                 () => Task.FromResult<Stream>(CreateTestStream(postContent)), postMetadata);
             Assert.That(await ReadStreamAsStringAsync(postStream), Is.EqualTo(postContent));
+        }
+
+        #endregion
+
+        #region Settings
+
+        private static RemoteFileMetadata MetadataFor(string content)
+        {
+            return new RemoteFileMetadata
+            {
+                FileSizeBytes = content.Length,
+                ModifiedDate = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc)
+            };
+        }
+
+        [Test]
+        public async Task EnableCaching_False_FetchesEveryTimeAndStoresNothing()
+        {
+            // Arrange
+            var config = CreateTestConfig();
+            config.EnableCaching = false;
+            var cache = new FileSystemCacheManager(config);
+            var content = "Test content";
+            int fetchCount = 0;
+            Func<Task<Stream>> fetchFunc = () =>
+            {
+                fetchCount++;
+                return Task.FromResult<Stream>(CreateTestStream(content));
+            };
+
+            // Act
+            string first;
+            using (var stream1 = await cache.GetOrFetchAsync("urn:test:off", fetchFunc, MetadataFor(content)))
+            {
+                first = await ReadStreamAsStringAsync(stream1);
+            }
+
+            using var stream2 = await cache.GetOrFetchAsync("urn:test:off", fetchFunc, MetadataFor(content));
+            var second = await ReadStreamAsStringAsync(stream2);
+            var stats = await cache.GetStatisticsAsync();
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(2), "With caching off every access goes to the source");
+            Assert.That(first, Is.EqualTo(content));
+            Assert.That(second, Is.EqualTo(content));
+            Assert.That(stats.EntryCount, Is.EqualTo(0), "Nothing is stored");
+            Assert.That(await cache.IsCachedAsync("urn:test:off"), Is.False);
+        }
+
+        [Test]
+        public async Task MinFileSizeToCache_FileBelowIt_IsFetchedEveryTimeAndNotStored()
+        {
+            // Arrange
+            var config = CreateTestConfig();
+            config.MinFileSizeToCache = 100;
+            var cache = new FileSystemCacheManager(config);
+            var content = "Test content"; // 12 bytes
+            int fetchCount = 0;
+            Func<Task<Stream>> fetchFunc = () =>
+            {
+                fetchCount++;
+                return Task.FromResult<Stream>(CreateTestStream(content));
+            };
+
+            // Act
+            using (var stream1 = await cache.GetOrFetchAsync("urn:test:small", fetchFunc, MetadataFor(content)))
+            {
+                await ReadStreamAsStringAsync(stream1);
+            }
+
+            using var stream2 = await cache.GetOrFetchAsync("urn:test:small", fetchFunc, MetadataFor(content));
+            var second = await ReadStreamAsStringAsync(stream2);
+            var stats = await cache.GetStatisticsAsync();
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(2));
+            Assert.That(second, Is.EqualTo(content));
+            Assert.That(stats.EntryCount, Is.EqualTo(0));
+        }
+
+        [Test]
+        public async Task MinFileSizeToCache_FileAtTheLimit_IsCached()
+        {
+            // Arrange
+            var config = CreateTestConfig();
+            var content = new string('x', 100);
+            config.MinFileSizeToCache = 100;
+            var cache = new FileSystemCacheManager(config);
+            int fetchCount = 0;
+            Func<Task<Stream>> fetchFunc = () =>
+            {
+                fetchCount++;
+                return Task.FromResult<Stream>(CreateTestStream(content));
+            };
+
+            // Act
+            using (var stream1 = await cache.GetOrFetchAsync("urn:test:limit", fetchFunc, MetadataFor(content)))
+            {
+                await ReadStreamAsStringAsync(stream1);
+            }
+
+            using var stream2 = await cache.GetOrFetchAsync("urn:test:limit", fetchFunc, MetadataFor(content));
+            await ReadStreamAsStringAsync(stream2);
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(1), "A file of exactly MinFileSizeToCache is cached");
+        }
+
+        /// <summary>
+        /// Caches one file, then moves its "cached on" date back in the index file, and returns a
+        /// fresh manager (built with the given MaxAgeHours) that loads that index.
+        /// </summary>
+        private async Task<FileSystemCacheManager> CacheOneFileCachedHoursAgoAsync(int maxAgeHours, int cachedHoursAgo, string content)
+        {
+            var config = CreateTestConfig();
+            var first = new FileSystemCacheManager(config);
+            using (var stream = await first.GetOrFetchAsync(
+                "urn:test:age",
+                () => Task.FromResult<Stream>(CreateTestStream(content)),
+                MetadataFor(content)))
+            {
+                await ReadStreamAsStringAsync(stream);
+            }
+
+            var indexPath = Path.Combine(_testCacheDirectory, "cache-index.json");
+            var index = JsonSerializer.Deserialize<CacheIndex>(File.ReadAllText(indexPath))!;
+            index.Entries[0].CachedDate = DateTime.UtcNow.AddHours(-cachedHoursAgo);
+            File.WriteAllText(indexPath, JsonSerializer.Serialize(index));
+
+            config.MaxAgeHours = maxAgeHours;
+            return new FileSystemCacheManager(config);
+        }
+
+        [Test]
+        public async Task MaxAgeHours_EntryOlderThanIt_IsFetchedAgain()
+        {
+            // Arrange
+            var content = "Test content";
+            var cache = await CacheOneFileCachedHoursAgoAsync(maxAgeHours: 24, cachedHoursAgo: 48, content);
+            int fetchCount = 0;
+
+            // Act
+            using var stream = await cache.GetOrFetchAsync(
+                "urn:test:age",
+                () =>
+                {
+                    fetchCount++;
+                    return Task.FromResult<Stream>(CreateTestStream(content));
+                },
+                MetadataFor(content));
+            await ReadStreamAsStringAsync(stream);
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(1), "The 48-hour-old entry is past MaxAgeHours of 24, so the source is read again");
+        }
+
+        [Test]
+        public async Task MaxAgeHours_EntryYoungerThanIt_IsServedFromCache()
+        {
+            // Arrange
+            var content = "Test content";
+            var cache = await CacheOneFileCachedHoursAgoAsync(maxAgeHours: 24, cachedHoursAgo: 2, content);
+            int fetchCount = 0;
+
+            // Act
+            using var stream = await cache.GetOrFetchAsync(
+                "urn:test:age",
+                () =>
+                {
+                    fetchCount++;
+                    return Task.FromResult<Stream>(CreateTestStream(content));
+                },
+                MetadataFor(content));
+            await ReadStreamAsStringAsync(stream);
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(0), "A 2-hour-old entry is inside MaxAgeHours of 24");
+        }
+
+        [Test]
+        public async Task MaxAgeHours_Zero_NeverExpiresByAge()
+        {
+            // Arrange
+            var content = "Test content";
+            var cache = await CacheOneFileCachedHoursAgoAsync(maxAgeHours: 0, cachedHoursAgo: 5000, content);
+            int fetchCount = 0;
+
+            // Act
+            using var stream = await cache.GetOrFetchAsync(
+                "urn:test:age",
+                () =>
+                {
+                    fetchCount++;
+                    return Task.FromResult<Stream>(CreateTestStream(content));
+                },
+                MetadataFor(content));
+            await ReadStreamAsStringAsync(stream);
+
+            // Assert
+            Assert.That(fetchCount, Is.EqualTo(0), "MaxAgeHours of zero turns the age limit off");
         }
 
         #endregion

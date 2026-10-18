@@ -21,6 +21,8 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
     private readonly IUserNotificationService? _notificationService;
     private readonly LogLevel _fileLogLevel;
     private readonly LogLevel _uiLogLevel;
+    private readonly bool _consoleOutput;
+    private readonly long _maxLogFileBytes;
     private readonly object _fileLock = new();
     private readonly BlockingCollection<LogEntry> _logQueue;
     private readonly Task _logWriter;
@@ -42,6 +44,8 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         _notificationService = notificationService;
         _fileLogLevel = config.FileLogLevel;
         _uiLogLevel = config.UILogLevel;
+        _consoleOutput = config.EnableConsoleOutput;
+        _maxLogFileBytes = config.MaxLogFileSizeMB * 1024L * 1024L;
 
         _logQueue = new BlockingCollection<LogEntry>();
         _cts = new CancellationTokenSource();
@@ -52,6 +56,8 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         {
             Directory.CreateDirectory(logDir);
         }
+
+        DeleteOldLogFiles(config.MaxLogFileAgeDays);
 
         // Start background log writer
         _logWriter = Task.Run(() => ProcessLogQueueAsync(_cts.Token));
@@ -228,6 +234,11 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
             File.AppendAllText(_logFilePath, logLine + Environment.NewLine);
         }
 
+        if (_consoleOutput)
+        {
+            Console.WriteLine(logLine);
+        }
+
         CheckLogRotation();
         return Task.CompletedTask;
     }
@@ -323,7 +334,7 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
     private void CheckLogRotation()
     {
         var fileInfo = new FileInfo(_logFilePath);
-        if (fileInfo.Exists && fileInfo.Length > 10 * 1024 * 1024) // 10 MB
+        if (_maxLogFileBytes > 0 && fileInfo.Exists && fileInfo.Length > _maxLogFileBytes)
         {
             var archivePath = $"{_logFilePath}.{DateTime.UtcNow:yyyyMMdd-HHmmss}.old";
             lock (_fileLock)
@@ -332,6 +343,53 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
                 {
                     File.Move(_logFilePath, archivePath);
                 }
+            }
+        }
+    }
+
+    private void DeleteOldLogFiles(int maxAgeDays)
+    {
+        if (maxAgeDays <= 0)
+        {
+            return;
+        }
+
+        var logDir = Path.GetDirectoryName(_logFilePath);
+        if (string.IsNullOrEmpty(logDir) || !Directory.Exists(logDir))
+        {
+            return;
+        }
+
+        // The default log name carries the date (retrocommander-20261018.log), so "the same kind of file"
+        // is the name up to the date: strip the trailing digits and match on that start.
+        var prefix = Path.GetFileNameWithoutExtension(_logFilePath).TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+        var cutoff = DateTime.UtcNow.AddDays(-maxAgeDays);
+        var files = Directory.GetFiles(logDir);
+
+        for (var i = 0; i < files.Length; i++)
+        {
+            var path = files[i];
+            var name = Path.GetFileName(path);
+            var looksLikeLog = name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && (name.EndsWith(".log", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith(".old", StringComparison.OrdinalIgnoreCase));
+
+            if (!looksLikeLog || string.Equals(path, _logFilePath, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (File.GetLastWriteTimeUtc(path) < cutoff)
+                {
+                    File.Delete(path);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // A file that is open elsewhere stays until the next start; cleaning up must not stop logging.
+                Debug.WriteLine($"Could not delete old log file {name}: {ex.Message}");
             }
         }
     }

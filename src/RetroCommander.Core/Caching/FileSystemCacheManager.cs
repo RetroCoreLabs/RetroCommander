@@ -18,6 +18,9 @@ public class FileSystemCacheManager : ICacheManager
 {
     private readonly string _cacheDirectory;
     private readonly long _maxCacheSizeBytes;
+    private readonly bool _enabled;
+    private readonly TimeSpan _maxAge;
+    private readonly long _minFileSizeToCache;
     private readonly CacheIndex _index;
     private readonly string _indexFilePath;
     private readonly object _lock = new();
@@ -38,6 +41,9 @@ public class FileSystemCacheManager : ICacheManager
     {
         _cacheDirectory = config.CacheDirectory;
         _maxCacheSizeBytes = config.MaxCacheSizeGB * 1024L * 1024L * 1024L;
+        _enabled = config.EnableCaching;
+        _maxAge = config.MaxAgeHours > 0 ? TimeSpan.FromHours(config.MaxAgeHours) : TimeSpan.Zero;
+        _minFileSizeToCache = config.MinFileSizeToCache;
         _indexFilePath = Path.Combine(_cacheDirectory, "cache-index.json");
 
         // Ensure cache directory exists
@@ -53,6 +59,13 @@ public class FileSystemCacheManager : ICacheManager
         RemoteFileMetadata remoteMetadata,
         CancellationToken cancellationToken = default)
     {
+        // Caching switched off, or the file is too small to be worth a cache entry: fetch it and
+        // hand the stream back without storing anything.
+        if (!_enabled || remoteMetadata.FileSizeBytes < _minFileSizeToCache)
+        {
+            return await fetchFunc();
+        }
+
         // Check if cached
         var entry = GetCacheEntry(urn);
 
@@ -153,6 +166,12 @@ public class FileSystemCacheManager : ICacheManager
 
     private bool IsCacheFresh(CacheEntryMetadata entry, RemoteFileMetadata remote)
     {
+        // Too old to trust, whatever the remote says (MaxAgeHours of zero or less turns this off)
+        if (_maxAge > TimeSpan.Zero && DateTime.UtcNow - entry.CachedDate > _maxAge)
+        {
+            return false;
+        }
+
         // Check if remote file has changed
         return entry.FileSizeBytes == remote.FileSizeBytes &&
                entry.RemoteModifiedDate == remote.ModifiedDate;

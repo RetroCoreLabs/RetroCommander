@@ -143,6 +143,6 @@ rather than first-match, and "might be" is an honest answer a driver is allowed 
 - `RetroIO.Storage.Local` (`RetroIO/src/RetroIO.Storage.Local/README.md`) — every format driver, and the
   table of what is supported.
 - `RetroIO.Storage.Ndfs` (`RetroIO/src/RetroIO.Storage.Ndfs/README.md`) — NDFS, including image creation.
-- `ndfs-analyzer` (`RetroIO/tools/RetroIO.Tools.NdfsAnalyzer/README.md`) — the command-line NDFS analysis
+- `ndfs-analyzer` (`RetroIO/src/tools/RetroIO.Tools.NdfsAnalyzer/README.md`) — the command-line NDFS analysis
   and repair this app's NDFS windows sit beside.
 - Tests: `tests/RetroCommander.Desktop.Tests`.

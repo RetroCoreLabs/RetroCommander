@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using RetroCommander.Core.Services;
 using RetroIO.Storage.Core;
 using RetroIO.Storage.Local;
 using RetroIO.Storage.Local.Partitions;
@@ -33,9 +34,9 @@ public partial class MountDialog : Window
     private readonly DriverFactory _driverFactory;
 
     /// <summary>
-    /// Creates the dialog with a new, empty <see cref="DriverFactory"/> that has no drivers registered.
+    /// Creates the dialog with a <see cref="DriverFactory"/> that has every standard driver registered.
     /// </summary>
-    public MountDialog() : this(new DriverFactory())
+    public MountDialog() : this(DriverFactoryBuilder.CreateWithAllDrivers())
     {
     }
 

@@ -464,6 +464,185 @@ namespace RetroCommander.Core.Tests
 
         #endregion
 
+        #region Settings
+
+        [Test]
+        [NonParallelizable]
+        public void EnableConsoleOutput_True_AlsoWritesTheLineToTheConsole()
+        {
+            // Arrange
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                EnableConsoleOutput = true
+            };
+            var original = Console.Out;
+            var captured = new StringWriter();
+
+            // Act
+            try
+            {
+                Console.SetOut(captured);
+                using (var logger = new UnifiedLogger(config))
+                {
+                    logger.LogInfo("Message for the console");
+                    Thread.Sleep(500);
+                }
+            }
+            finally
+            {
+                Console.SetOut(original);
+            }
+
+            // Assert
+            Assert.That(captured.ToString(), Does.Contain("Message for the console"));
+            Assert.That(File.ReadAllText(_testLogFile), Does.Contain("Message for the console"));
+        }
+
+        [Test]
+        [NonParallelizable]
+        public void EnableConsoleOutput_False_WritesNothingToTheConsole()
+        {
+            // Arrange
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                EnableConsoleOutput = false
+            };
+            var original = Console.Out;
+            var captured = new StringWriter();
+
+            // Act
+            try
+            {
+                Console.SetOut(captured);
+                using (var logger = new UnifiedLogger(config))
+                {
+                    logger.LogInfo("Message for the file only");
+                    Thread.Sleep(500);
+                }
+            }
+            finally
+            {
+                Console.SetOut(original);
+            }
+
+            // Assert
+            Assert.That(captured.ToString(), Does.Not.Contain("Message for the file only"));
+            Assert.That(File.ReadAllText(_testLogFile), Does.Contain("Message for the file only"));
+        }
+
+        [Test]
+        public void MaxLogFileSizeMB_One_RotatesAFileOverOneMegabyte()
+        {
+            // Arrange
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                MaxLogFileSizeMB = 1
+            };
+            File.WriteAllText(_testLogFile, new string('X', 1024 * 1024 + 1000));
+
+            // Act
+            using (var logger = new UnifiedLogger(config))
+            {
+                logger.LogInfo("Message after rotation trigger");
+                Thread.Sleep(500);
+            }
+
+            // Assert
+            Assert.That(Directory.GetFiles(_testLogDirectory, "*.old").Length, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void MaxLogFileSizeMB_Zero_NeverRotates()
+        {
+            // Arrange
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                MaxLogFileSizeMB = 0
+            };
+            File.WriteAllText(_testLogFile, new string('X', 11 * 1024 * 1024));
+
+            // Act
+            using (var logger = new UnifiedLogger(config))
+            {
+                logger.LogInfo("Message that would trigger rotation");
+                Thread.Sleep(500);
+            }
+
+            // Assert
+            Assert.That(Directory.GetFiles(_testLogDirectory, "*.old"), Is.Empty);
+        }
+
+        private string CreateLogFileWritten(string name, int daysAgo)
+        {
+            var path = Path.Combine(_testLogDirectory, name);
+            File.WriteAllText(path, "old log text");
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddDays(-daysAgo));
+            return path;
+        }
+
+        [Test]
+        public void MaxLogFileAgeDays_DeletesOldLogFilesAtStartAndKeepsTheRest()
+        {
+            // Arrange
+            var oldArchive = CreateLogFileWritten("test.log.20200101-000000.old", daysAgo: 60);
+            var recentArchive = CreateLogFileWritten("test.log.20261001-000000.old", daysAgo: 1);
+            var otherOldFile = CreateLogFileWritten("other.log", daysAgo: 60);
+            var oldNonLog = CreateLogFileWritten("test-notes.txt", daysAgo: 60);
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                MaxLogFileAgeDays = 30
+            };
+
+            // Act
+            using (var logger = new UnifiedLogger(config))
+            {
+                logger.LogInfo("Start");
+                Thread.Sleep(500);
+            }
+
+            // Assert
+            Assert.That(File.Exists(oldArchive), Is.False, "60 days old, same name start, ends in .old");
+            Assert.That(File.Exists(recentArchive), Is.True, "1 day old");
+            Assert.That(File.Exists(otherOldFile), Is.True, "different name start, not this logger's file");
+            Assert.That(File.Exists(oldNonLog), Is.True, "not a .log or .old file");
+            Assert.That(File.Exists(_testLogFile), Is.True, "the current log file is never deleted");
+        }
+
+        [Test]
+        public void MaxLogFileAgeDays_Zero_DeletesNothing()
+        {
+            // Arrange
+            var oldArchive = CreateLogFileWritten("test.log.20200101-000000.old", daysAgo: 600);
+            var config = new LoggingConfiguration
+            {
+                LogFilePath = _testLogFile,
+                FileLogLevel = LogLevel.Debug,
+                MaxLogFileAgeDays = 0
+            };
+
+            // Act
+            using (var logger = new UnifiedLogger(config))
+            {
+                logger.LogInfo("Start");
+                Thread.Sleep(500);
+            }
+
+            // Assert
+            Assert.That(File.Exists(oldArchive), Is.True);
+        }
+
+        #endregion
+
         #region Concurrent Logging Tests
 
         [Test]

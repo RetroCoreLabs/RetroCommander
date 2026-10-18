@@ -18,15 +18,6 @@ public static class WindowsProperties
     public const string Attributes = "Windows.Attributes";           // FileAttributes
 
     /// <summary>
-    /// Key for the file's alternate data streams.
-    /// </summary>
-    /// <remarks>
-    /// The comment on the line below names the value as a list of ADSInfo, but no ADSInfo type exists in the code
-    /// and nothing sets this key at present.
-    /// </remarks>
-    public const string AlternateDataStreams = "Windows.ADS";        // List<ADSInfo>
-
-    /// <summary>
     /// Key for the short (8.3) file name. The value is a string.
     /// </summary>
     public const string ShortFileName = "Windows.ShortFileName";     // string

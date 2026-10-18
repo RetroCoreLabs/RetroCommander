@@ -16,7 +16,7 @@ public class CacheConfiguration
     /// Whether caching is switched on. Defaults to true.
     /// </summary>
     /// <remarks>
-    /// <see cref="FileSystemCacheManager"/> does not read this value.
+    /// When false, <see cref="FileSystemCacheManager"/> fetches every file from its source and stores nothing.
     /// </remarks>
     public bool EnableCaching { get; set; } = true;
 
@@ -43,24 +43,17 @@ public class CacheConfiguration
     /// Maximum age of a cached file in hours. Defaults to 24.
     /// </summary>
     /// <remarks>
-    /// <see cref="FileSystemCacheManager"/> does not read this value.
+    /// A cached file older than this is fetched again, even if its source has not changed.
+    /// Zero or less means a cached file never expires by age.
     /// </remarks>
     public int MaxAgeHours { get; set; } = 24;
 
     /// <summary>
-    /// Whether read-only files may be cached. Defaults to true.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="FileSystemCacheManager"/> does not read this value.
-    /// </remarks>
-    public bool CacheReadOnlyFiles { get; set; } = true;
-
-    // Minimum file size to cache (avoid caching tiny files)
-    /// <summary>
     /// Smallest file size, in bytes, worth caching. Defaults to 1024.
     /// </summary>
     /// <remarks>
-    /// <see cref="FileSystemCacheManager"/> does not read this value.
+    /// A file smaller than this is fetched from its source every time and is not stored, since a tiny
+    /// file costs more to look up than to fetch.
     /// </remarks>
     public long MinFileSizeToCache { get; set; } = 1024; // 1 KB
 }
