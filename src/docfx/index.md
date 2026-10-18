@@ -6,7 +6,8 @@ remote shares. A D64, a TNFS share and a folder on your disk are all just volume
 between them is one operation. Metadata the destination filesystem cannot hold is kept in a
 sidecar rather than dropped.
 
-This site is the reference for the code, generated from its XML documentation.
+This site is the reference for the code, generated from its XML documentation. The source, issues
+and releases are on [GitHub](https://github.com/RetroCoreLabs/RetroCommander).
 
 ## The two projects
 

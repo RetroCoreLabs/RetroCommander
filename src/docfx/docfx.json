@@ -30,12 +30,17 @@
       { "files": [ "*.md", "toc.yml" ], "exclude": [ "README.md" ] },
       { "files": [ "docs/**.md", "docs/**/toc.yml" ] }
     ],
-    "resource": [ { "files": [ "images/**" ] } ],
+    "resource": [
+      { "files": [ "images/**" ] },
+      { "files": [ "Assets/RetroCommander.svg", "Assets/RetroCommander.ico" ], "src": "../RetroCommander.Desktop", "dest": "images" }
+    ],
     "output": "_site",
     "globalMetadata": {
       "_appName": "RetroCommander",
       "_appTitle": "RetroCommander API reference",
-      "_appFooter": "Copyright (c) 1985-2026 Ronny Hansen - MIT License - RetroCore Labs",
+      "_appLogoPath": "images/Assets/RetroCommander.svg",
+      "_appFaviconPath": "images/Assets/RetroCommander.ico",
+      "_appFooter": "Copyright (c) 1985-2026 Ronny Hansen - MIT License - RetroCore Labs - <a href=\"https://github.com/RetroCoreLabs/RetroCommander\">GitHub</a>",
       "_enableSearch": true,
       "_disableContribution": false,
       "_gitContribute": {
