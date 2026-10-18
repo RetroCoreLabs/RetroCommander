@@ -15,6 +15,28 @@ namespace RetroCommander.Core.Transfer;
 /// </summary>
 public class AzureToNdfsPropertyMapper : StandardPropertyMapper
 {
+    /// <summary>
+    /// Copies the standard properties, then reads the NDFS properties back out of the Azure metadata dictionary.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Each of ndfs-userid, ndfs-objecttype, ndfs-accessmode, ndfs-paritybit, ndfs-username and ndfs-effectivedate
+    /// is parsed and set only if it is present and parses. When the source has no Azure metadata at all, the target gets
+    /// user id 0, object type 1, access mode <c>0xFF</c> and parity bit false. If no effective date was set,
+    /// the source's <see cref="StandardProperties.ModifiedDate"/> is used for it when present.
+    /// </para>
+    /// <para>
+    /// This method hides <see cref="StandardPropertyMapper.MapProperties"/> with <c>new</c> and does not override it.
+    /// A call made through an <see cref="IPropertyMapper"/> or <see cref="StandardPropertyMapper"/> reference runs the base method,
+    /// so only the standard properties are copied.
+    /// </para>
+    /// </remarks>
+    /// <param name="source">
+    /// The bag holding the Azure properties.
+    /// </param>
+    /// <param name="target">
+    /// The bag to fill with standard and NDFS properties.
+    /// </param>
     public new void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         // First copy standard properties

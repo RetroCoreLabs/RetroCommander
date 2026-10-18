@@ -22,10 +22,29 @@ using RetroIO.Storage.Ndfs.Drivers;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Dialog that lets the user confirm or pick the filesystem type and partition before a disk image is mounted.
+/// </summary>
+/// <remarks>
+/// It shows the file detection results, looks for BSD and Sun partitions, builds the URN to mount from the choices,
+/// and fills a Details tab with filesystem metadata. It closes with true when the user clicks Mount and false on Cancel.
+/// </remarks>
 public partial class GenericMountDialog : Window
 {
+    /// <summary>
+    /// Gets the URN the user chose to mount, such as a file:/// or bsd:// URN with an optional #partition fragment.
+    /// Null until Mount is clicked, and null after Cancel.
+    /// </summary>
     public string? SelectedUrn { get; private set; }
+
+    /// <summary>
+    /// Gets whether the "don't show again" box was ticked when the user clicked Mount. False after Cancel.
+    /// </summary>
     public bool DontShowAgain { get; private set; }
+
+    /// <summary>
+    /// Gets whether the user clicked Mount. False after Cancel or when the window was closed another way.
+    /// </summary>
     public bool MountConfirmed { get; private set; }
 
     private string _imagePath;
@@ -33,10 +52,25 @@ public partial class GenericMountDialog : Window
     private List<PartitionMetadata>? _detectedPartitions;
     private FileSystemMetadataService? _metadataService;
 
+    /// <summary>
+    /// Creates the dialog with an empty image path and no detection results.
+    /// </summary>
     public GenericMountDialog() : this(string.Empty)
     {
     }
 
+    /// <summary>
+    /// Creates the dialog for one image file and starts partition detection and the Details tab load in the background.
+    /// </summary>
+    /// <remarks>
+    /// When the best detection confidence is 0.8 or more, the matching filesystem type is selected in the list.
+    /// </remarks>
+    /// <param name="imagePath">
+    /// Path of the image file to mount.
+    /// </param>
+    /// <param name="detectionConfidences">
+    /// Detection confidence for each filesystem type name as a fraction, shown as a percentage; null or empty when there are no results.
+    /// </param>
     public GenericMountDialog(string imagePath, Dictionary<string, float>? detectionConfidences = null)
     {
         InitializeComponent();
@@ -68,6 +102,10 @@ public partial class GenericMountDialog : Window
     // the height to the screen working area so a very tall Details tab scrolls instead of running
     // off-screen. (Previous versions "locked" the height after the first layout, which froze it
     // before the BSD panel appeared and clipped the bottom — that was the bug.)
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Limits the window height to 92 percent of the working area of the screen it is on.
+    /// </remarks>
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);

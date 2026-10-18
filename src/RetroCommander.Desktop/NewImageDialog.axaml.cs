@@ -31,10 +31,14 @@ namespace RetroCommander.Desktop;
 /// </summary>
 public partial class NewImageDialog : Window
 {
-    /// <summary>Set when an image was created; the full path to it.</summary>
+    /// <summary>
+    /// Set when an image was created; the full path to it.
+    /// </summary>
     public string? CreatedImagePath { get; private set; }
 
-    /// <summary>True if the user asked for the new image to be mounted.</summary>
+    /// <summary>
+    /// True if the user asked for the new image to be mounted.
+    /// </summary>
     public bool ShouldMount { get; private set; }
 
     // The format currently selected in the left-hand list.
@@ -63,6 +67,9 @@ public partial class NewImageDialog : Window
         NdfsBootLoaderType.Scsi
     };
 
+    /// <summary>
+    /// Creates the dialog, fills the NDFS and PC option lists, and starts with NDFS selected.
+    /// </summary>
     public NewImageDialog()
     {
         InitializeComponent();
@@ -337,7 +344,9 @@ public partial class NewImageDialog : Window
         return s;
     }
 
-    /// <summary>Real measured drive geometry: (usable capacity, physical device) in pages.</summary>
+    /// <summary>
+    /// Real measured drive geometry: (usable capacity, physical device) in pages.
+    /// </summary>
     private static (uint capacity, uint device) NdfsGeometry(NdfsImageTemplate t)
     {
         return t switch
@@ -489,7 +498,9 @@ public partial class NewImageDialog : Window
         public string CbmDiskId = string.Empty;
     }
 
-    /// <summary>Reads the controls (UI thread only) into a plain request object.</summary>
+    /// <summary>
+    /// Reads the controls (UI thread only) into a plain request object.
+    /// </summary>
     internal NewImageRequest BuildRequest(string path)
     {
         var r = new NewImageRequest { Format = _format, OutputPath = path };

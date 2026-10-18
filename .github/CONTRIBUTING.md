@@ -91,6 +91,17 @@ It must exit 0. It fails on a relative link that does not resolve, a relative li
 the repository root, a machine-specific absolute path, and a Mermaid diagram that is malformed or
 breaks `MERMAID_COLOR_STANDARDS.md`.
 
+That checker reads Markdown only. For every other file - code, tests, scripts - run:
+
+```powershell
+pwsh src\eng\check-paths.ps1
+```
+
+It fails on a path that is only right on one machine (a Dev folder on a drive, a real home
+folder, a WSL `/mnt/<drive>/` mount, a synced cloud folder). The build workflow runs it on every
+push. Made-up drive-letter inputs in tests, such as `file:///C:/test/file.img`, are allowed: they
+are what the path-handling tests test.
+
 > [!WARNING]
 > **Never put an absolute path in anything committed here.** A drive letter or a home directory is
 > correct on exactly one machine, and this repository is public. A path inside the repository goes

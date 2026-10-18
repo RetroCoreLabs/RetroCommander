@@ -28,6 +28,15 @@ namespace RetroCommander.Core.Services
     {
         private readonly DriverFactory _driverFactory;
 
+        /// <summary>
+        /// Creates the service.
+        /// </summary>
+        /// <param name="driverFactory">
+        /// The driver factory used to detect the format of an image.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="driverFactory"/> is null.
+        /// </exception>
         public FileSystemMetadataService(DriverFactory driverFactory)
         {
             _driverFactory = driverFactory ?? throw new ArgumentNullException(nameof(driverFactory));

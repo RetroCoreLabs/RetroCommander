@@ -22,16 +22,31 @@ namespace RetroCommander.Desktop.Themes
     public sealed class UiSettings
     {
         // Curated default monospace stack for the file viewer (text + hex dumps).
+        /// <summary>
+        /// The default font family list for the File Viewer dialog, used as the starting value
+        /// of <see cref="ViewerFontFamily"/>.
+        /// </summary>
         public const string DefaultViewerFontFamily = "Consolas, Courier New, monospace";
+
+        /// <summary>
+        /// The default font size for the File Viewer dialog, used as the starting value of
+        /// <see cref="ViewerFontSize"/>.
+        /// </summary>
         public const double DefaultViewerFontSize = 13.0;
 
-        /// <summary>Selected theme id (see <see cref="ThemeManager.Themes"/>). Null = default.</summary>
+        /// <summary>
+        /// Selected theme id (see <see cref="ThemeManager.Themes"/>). Null = default.
+        /// </summary>
         public string? Theme { get; set; }
 
-        /// <summary>Monospace font family used by the File Viewer dialog.</summary>
+        /// <summary>
+        /// Monospace font family used by the File Viewer dialog.
+        /// </summary>
         public string ViewerFontFamily { get; set; } = DefaultViewerFontFamily;
 
-        /// <summary>Font size (points) used by the File Viewer dialog.</summary>
+        /// <summary>
+        /// Font size (points) used by the File Viewer dialog.
+        /// </summary>
         public double ViewerFontSize { get; set; } = DefaultViewerFontSize;
 
         /// <summary>
@@ -65,7 +80,9 @@ namespace RetroCommander.Desktop.Themes
 
         private static UiSettings? s_instance;
 
-        /// <summary>The process-wide settings instance (loaded from disk on first access).</summary>
+        /// <summary>
+        /// The process-wide settings instance (loaded from disk on first access).
+        /// </summary>
         public static UiSettings Instance => s_instance ??= Load();
 
         private static string GetSettingsPath()
@@ -103,7 +120,9 @@ namespace RetroCommander.Desktop.Themes
             return new UiSettings();
         }
 
-        /// <summary>Writes the current settings to disk (best-effort; IO failures are ignored).</summary>
+        /// <summary>
+        /// Writes the current settings to disk (best-effort; IO failures are ignored).
+        /// </summary>
         public void Save()
         {
             try

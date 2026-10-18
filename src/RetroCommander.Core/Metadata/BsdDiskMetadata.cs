@@ -14,33 +14,97 @@ namespace RetroCommander.Core.Metadata
     /// </summary>
     public sealed class BsdDiskMetadata : IDiskMetadata
     {
+        /// <inheritdoc/>
         public string FileSystemType => "BSD V7 / FFS";
+
+        /// <inheritdoc/>
         public long FileSizeBytes { get; set; }
+
+        /// <inheritdoc/>
         public string FileSizeFormatted { get; set; } = string.Empty;
+
+        /// <inheritdoc/>
         public List<string> Warnings { get; set; } = new List<string>();
+
+        /// <inheritdoc/>
         public bool HasErrors { get; set; }
+
+        /// <inheritdoc/>
         public string? ErrorMessage { get; set; }
 
         // BSD-specific fields
+        /// <summary>
+        /// Disk type name from the BSD disk label, trimmed, or "Unknown" when the label has none.
+        /// </summary>
         public string TypeName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Pack name from the BSD disk label, trimmed, or "Unknown" when the label has none.
+        /// </summary>
         public string PackName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Readable name of the drive type code in the disk label, such as "SCSI" or "IDE".
+        /// </summary>
         public string DriveType { get; set; } = string.Empty;
 
         // Geometry
+        /// <summary>
+        /// Sector size in bytes, from the disk label.
+        /// </summary>
         public int BytesPerSector { get; set; }
+
+        /// <summary>
+        /// Sectors per track, from the disk label.
+        /// </summary>
         public uint SectorsPerTrack { get; set; }
+
+        /// <summary>
+        /// Tracks per cylinder, from the disk label.
+        /// </summary>
         public uint TracksPerCylinder { get; set; }
+
+        /// <summary>
+        /// Number of cylinders on the drive, from the disk label.
+        /// </summary>
         public uint CylindersPerUnit { get; set; }
+
+        /// <summary>
+        /// Total number of sectors on the drive, from the disk label.
+        /// </summary>
         public uint TotalSectors { get; set; }
+
+        /// <summary>
+        /// <see cref="TotalSectors"/> as display text, with the size in MB counted at 512 bytes
+        /// per sector.
+        /// </summary>
         public string TotalSectorsFormatted { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Drive rotation speed in revolutions per minute, from the disk label. Zero means unknown.
+        /// </summary>
         public ushort RPM { get; set; }
 
         // Validation
+        /// <summary>
+        /// Magic number read from the disk label.
+        /// </summary>
         public uint Magic { get; set; }
+
+        /// <summary>
+        /// True when <see cref="Magic"/> equals the BSD disk label magic <c>0x82564557</c>.
+        /// </summary>
         public bool IsMagicValid { get; set; }
+
+        /// <summary>
+        /// True when the disk label passes its own validity check. Shown as the checksum line.
+        /// </summary>
         public bool IsChecksumValid { get; set; }
 
         // Partitions
+        /// <summary>
+        /// Partitions a to h from the disk label that have a non-zero size.
+        /// </summary>
         public List<BsdPartitionMetadata> Partitions { get; set; } = new List<BsdPartitionMetadata>();
 
         /// <summary>
@@ -150,13 +214,40 @@ namespace RetroCommander.Core.Metadata
         }
     }
 
+    /// <summary>
+    /// One partition from a BSD disk label, for UI display.
+    /// </summary>
     public sealed class BsdPartitionMetadata
     {
+        /// <summary>
+        /// Partition letter in upper case, A to H.
+        /// </summary>
         public string Letter { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Usual role of the partition letter (such as "Root" or "Swap") followed by its
+        /// filesystem type in brackets.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Partition size in bytes, counted at 512 bytes per sector.
+        /// </summary>
         public long SizeBytes { get; set; }
+
+        /// <summary>
+        /// <see cref="SizeBytes"/> as display text in B, KB or MB.
+        /// </summary>
         public string SizeFormatted { get; set; } = string.Empty;
+
+        /// <summary>
+        /// First sector of the partition (LBA).
+        /// </summary>
         public uint Offset { get; set; }
+
+        /// <summary>
+        /// <see cref="Offset"/> as display text, such as "LBA 16".
+        /// </summary>
         public string OffsetFormatted { get; set; } = string.Empty;
     }
 }

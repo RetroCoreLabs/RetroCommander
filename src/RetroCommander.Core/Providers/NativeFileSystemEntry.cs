@@ -19,34 +19,82 @@ public class NativeFileSystemEntry : IFileSystemEntry
     private readonly DirectoryInfo? _dirInfo;
     private readonly IPropertyBag _properties;
 
+    /// <summary>
+    /// Wraps a host file and builds its property bag right away.
+    /// </summary>
+    /// <remarks>
+    /// The property bag holds the name, size, dates in UTC, read-only and hidden flags, and the Windows attributes.
+    /// </remarks>
+    /// <param name="fileInfo">
+    /// The host file.
+    /// </param>
     public NativeFileSystemEntry(FileInfo fileInfo)
     {
         _fileInfo = fileInfo;
         _properties = ExtractPropertiesFromFile(fileInfo);
     }
 
+    /// <summary>
+    /// Wraps a host directory and builds its property bag right away.
+    /// </summary>
+    /// <remarks>
+    /// The property bag holds the name, a size of 0, dates in UTC, the hidden flag, and the Windows attributes.
+    /// </remarks>
+    /// <param name="dirInfo">
+    /// The host directory.
+    /// </param>
     public NativeFileSystemEntry(DirectoryInfo dirInfo)
     {
         _dirInfo = dirInfo;
         _properties = ExtractPropertiesFromDirectory(dirInfo);
     }
 
+    /// <inheritdoc/>
     public string Name => IsDirectory ? _dirInfo!.Name : _fileInfo!.Name;
 
+    /// <summary>
+    /// Gets the full host path of the file or directory.
+    /// </summary>
     public string FullPath => IsDirectory ? _dirInfo!.FullName : _fileInfo!.FullName;
 
+    /// <inheritdoc/>
     public long Size => IsDirectory ? 0 : _fileInfo!.Length;
 
+    /// <summary>
+    /// Gets whether this entry was created from a directory.
+    /// </summary>
     public bool IsDirectory => _dirInfo != null;
 
+    /// <summary>
+    /// Gets the creation time in UTC.
+    /// </summary>
     public DateTime? CreatedDate => IsDirectory ? _dirInfo!.CreationTimeUtc : _fileInfo!.CreationTimeUtc;
 
+    /// <summary>
+    /// Gets the last write time in UTC.
+    /// </summary>
     public DateTime? ModifiedDate => IsDirectory ? _dirInfo!.LastWriteTimeUtc : _fileInfo!.LastWriteTimeUtc;
 
+    /// <summary>
+    /// Gets the last access time in UTC.
+    /// </summary>
     public DateTime? AccessedDate => IsDirectory ? _dirInfo!.LastAccessTimeUtc : _fileInfo!.LastAccessTimeUtc;
 
+    /// <inheritdoc/>
     public IPropertyBag Properties => _properties;
 
+    /// <summary>
+    /// Opens the host file for reading.
+    /// </summary>
+    /// <param name="cancellationToken">
+    /// Not used.
+    /// </param>
+    /// <returns>
+    /// A read-only file stream; the caller disposes it.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the entry is a directory.
+    /// </exception>
     public Task<Stream> OpenReadAsync(CancellationToken cancellationToken = default)
     {
         if (IsDirectory)
@@ -55,6 +103,21 @@ public class NativeFileSystemEntry : IFileSystemEntry
         return Task.FromResult<Stream>(File.OpenRead(_fileInfo!.FullName));
     }
 
+    /// <summary>
+    /// Replaces the host file's content with <paramref name="content"/>, creating the file if needed.
+    /// </summary>
+    /// <param name="content">
+    /// The new content, read from its current position to the end.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to cancel the copy.
+    /// </param>
+    /// <returns>
+    /// A task that completes when the content is written.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the entry is a directory.
+    /// </exception>
     public async Task WriteAsync(Stream content, CancellationToken cancellationToken = default)
     {
         if (IsDirectory)

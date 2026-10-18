@@ -43,14 +43,18 @@ namespace RetroCommander.Desktop.Tests
         /// </summary>
         private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-        /// <summary>Sets a TextBox exactly as typing would, then lets the change propagate.</summary>
+        /// <summary>
+        /// Sets a TextBox exactly as typing would, then lets the change propagate.
+        /// </summary>
         private static void Type(TextBox box, string text)
         {
             box.Text = text;
             Pump();
         }
 
-        /// <summary>Selects a format in the left-hand catalogue by its Tag, as a click would.</summary>
+        /// <summary>
+        /// Selects a format in the left-hand catalogue by its Tag, as a click would.
+        /// </summary>
         private static void SelectFormat(NewImageDialog dialog, string tag)
         {
             ListBox[] lists = { dialog.NdfsList, dialog.PcList, dialog.CbmList };

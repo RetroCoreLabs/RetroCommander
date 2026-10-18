@@ -49,7 +49,9 @@ namespace RetroCommander.Core.Metadata
         /// Gets detailed properties organized by category for UI display.
         /// Each property includes category (for grouping), label, value, and optional icon.
         /// </summary>
-        /// <returns>List of metadata properties ready for display</returns>
+        /// <returns>
+        /// List of metadata properties ready for display
+        /// </returns>
         List<MetadataProperty> GetDetailedProperties();
     }
 }

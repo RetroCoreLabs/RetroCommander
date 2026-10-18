@@ -14,28 +14,90 @@ namespace RetroCommander.Core.Metadata
     /// </summary>
     public sealed class NdfsMetadata : IDiskMetadata
     {
+        /// <inheritdoc/>
         public string FileSystemType => "NDFS (Nord Disk File System)";
+
+        /// <inheritdoc/>
         public long FileSizeBytes { get; set; }
+
+        /// <inheritdoc/>
         public string FileSizeFormatted { get; set; } = string.Empty;
+
+        /// <inheritdoc/>
         public List<string> Warnings { get; set; } = new List<string>();
+
+        /// <inheritdoc/>
         public bool HasErrors { get; set; }
+
+        /// <inheritdoc/>
         public string? ErrorMessage { get; set; }
 
         // Volume Info
+        /// <summary>
+        /// Directory name stored in the master block.
+        /// </summary>
         public string DirectoryName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Volume label shown in the UI. Filled with the same value as <see cref="DirectoryName"/>.
+        /// </summary>
         public string VolumeLabel { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Readable guess at the disk kind, such as a FLOMON floppy or a hard disk named from its
+        /// page count.
+        /// </summary>
         public string DiskType { get; set; } = string.Empty;
-        /// <summary>Full path to the physical disk image backing this mount.</summary>
+        /// <summary>
+        /// Full path to the physical disk image backing this mount.
+        /// </summary>
         public string ImagePath { get; set; } = string.Empty;
 
         // Capacity
+        /// <summary>
+        /// <see cref="TotalCapacityPages"/> in MB, counted at 2048 bytes per page. Only set when
+        /// <see cref="HasExtendedInfo"/> is true.
+        /// </summary>
         public double TotalCapacityMB { get; set; }
+
+        /// <summary>
+        /// Pages available on the volume, from the master block's extended info. Only set when
+        /// <see cref="HasExtendedInfo"/> is true.
+        /// </summary>
         public uint TotalCapacityPages { get; set; }
+
+        /// <summary>
+        /// <see cref="UsedSpacePages"/> in MB, counted at 2048 bytes per page. Only set when
+        /// <see cref="HasExtendedInfo"/> is true.
+        /// </summary>
         public double UsedSpaceMB { get; set; }
+
+        /// <summary>
+        /// <see cref="TotalCapacityPages"/> minus <see cref="FreeSpacePages"/>. Only set when
+        /// <see cref="HasExtendedInfo"/> is true.
+        /// </summary>
         public uint UsedSpacePages { get; set; }
+
+        /// <summary>
+        /// <see cref="FreeSpacePages"/> in MB, counted at 2048 bytes per page.
+        /// </summary>
         public double FreeSpaceMB { get; set; }
+
+        /// <summary>
+        /// Unreserved pages, from the master block.
+        /// </summary>
         public uint FreeSpacePages { get; set; }
+
+        /// <summary>
+        /// <see cref="UsedSpacePages"/> as a percentage of <see cref="TotalCapacityPages"/>, from
+        /// 0 to 100. Only set when <see cref="HasExtendedInfo"/> is true.
+        /// </summary>
         public double UsedPercent { get; set; }
+
+        /// <summary>
+        /// True when the master block's extended info is valid. Without it the total and used
+        /// capacity are not known.
+        /// </summary>
         public bool HasExtendedInfo { get; set; }
 
         // System Info
@@ -46,13 +108,25 @@ namespace RetroCommander.Core.Metadata
         /// old "CPU Serial" field was a phantom that was never parsed and always read 0.
         /// </summary>
         public uint? CpuSystemNumber { get; set; }
+
+        /// <summary>
+        /// Name of the boot format the file system detected on the volume.
+        /// </summary>
         public string BootFormat { get; set; } = string.Empty;
-        /// <summary>Boot controller family from the raw bootstrap (Floppy/SMD-ECC/Winchester/SCSI), or "Unknown".</summary>
+        /// <summary>
+        /// Boot controller family from the raw bootstrap (Floppy/SMD-ECC/Winchester/SCSI), or "Unknown".
+        /// </summary>
         public string BootControllerType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// True when the file system reports the volume as bootable.
+        /// </summary>
         public bool IsBootable { get; set; }
 
         // "Entered" interlock (extended-info flag word bit 15)
-        /// <summary>True when the directory is left "entered/in use" (flag-word bit 15 set).</summary>
+        /// <summary>
+        /// True when the directory is left "entered/in use" (flag-word bit 15 set).
+        /// </summary>
         public bool IsEntered { get; set; }
         /// <summary>
         /// The system number that has the directory entered (only meaningful when <see cref="IsEntered"/>).
@@ -80,16 +154,33 @@ namespace RetroCommander.Core.Metadata
                 return $"Yes — entered by system {EnteredBySystemNumber.Value}";
             }
         }
-        /// <summary>Raw extended-info flag word (word 1754B).</summary>
+        /// <summary>
+        /// Raw extended-info flag word (word 1754B).
+        /// </summary>
         public ushort FlagWord { get; set; }
 
         // Bitmap / allocation (authoritative live free/used from the bit file)
+        /// <summary>
+        /// Number of device pages the bit file covers. Zero when no bit file was read.
+        /// </summary>
         public uint BitmapTotalPages { get; set; }
+
+        /// <summary>
+        /// Number of pages marked used in the bit file.
+        /// </summary>
         public uint BitmapUsedPages { get; set; }
+
+        /// <summary>
+        /// Number of pages marked free in the bit file.
+        /// </summary>
         public uint BitmapFreePages { get; set; }
-        /// <summary>Bit file's own size in pages (contiguous span).</summary>
+        /// <summary>
+        /// Bit file's own size in pages (contiguous span).
+        /// </summary>
         public uint BitFileSizePages { get; set; }
-        /// <summary>Highest allocatable page + 1 (declared capacity ceiling); may differ from device size.</summary>
+        /// <summary>
+        /// Highest allocatable page + 1 (declared capacity ceiling); may differ from device size.
+        /// </summary>
         public uint AllocCeilingPages { get; set; }
 
         /// <summary>
@@ -99,13 +190,38 @@ namespace RetroCommander.Core.Metadata
         public byte[] BitmapData { get; set; } = System.Array.Empty<byte>();
 
         // Users
+        /// <summary>
+        /// One entry per user found in the user file.
+        /// </summary>
         public List<NdfsUserInfo> Users { get; set; } = new List<NdfsUserInfo>();
 
         // Technical Details
+        /// <summary>
+        /// Block number of the object file, from the master block's pointer, or null when the
+        /// pointer is missing.
+        /// </summary>
         public uint? ObjectFileBlock { get; set; }
+
+        /// <summary>
+        /// Block number of the user file, from the master block's pointer, or null when the
+        /// pointer is missing.
+        /// </summary>
         public uint? UserFileBlock { get; set; }
+
+        /// <summary>
+        /// Block number of the bit file, from the master block's pointer, or null when the
+        /// pointer is missing.
+        /// </summary>
         public uint? BitFileBlock { get; set; }
+
+        /// <summary>
+        /// Master block checksum state as display text: valid, invalid or "Unknown".
+        /// </summary>
         public string ChecksumStatus { get; set; } = string.Empty;
+
+        /// <summary>
+        /// True when the master block CRC checks out.
+        /// </summary>
         public bool ChecksumValid { get; set; }
 
         /// <summary>
@@ -309,12 +425,34 @@ namespace RetroCommander.Core.Metadata
     /// </summary>
     public sealed class NdfsUserInfo
     {
+        /// <summary>
+        /// The user's index number in the user file.
+        /// </summary>
         public int UserIndex { get; set; }
+
+        /// <summary>
+        /// The user's name.
+        /// </summary>
         public string UserName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Number of pages reserved for the user (the quota).
+        /// </summary>
         public uint PagesReserved { get; set; }
+
+        /// <summary>
+        /// Number of pages the user's files take up.
+        /// </summary>
         public uint PagesUsed { get; set; }
-        /// <summary>Quota remaining = reserved − used (clamped at 0).</summary>
+
+        /// <summary>
+        /// Quota remaining = reserved − used (clamped at 0).
+        /// </summary>
         public uint PagesRemaining { get; set; }
+
+        /// <summary>
+        /// Enter count stored in the user's entry.
+        /// </summary>
         public byte EnterCount { get; set; }
     }
 }

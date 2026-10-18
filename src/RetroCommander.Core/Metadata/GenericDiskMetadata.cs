@@ -15,11 +15,22 @@ namespace RetroCommander.Core.Metadata
     /// </summary>
     public sealed class GenericDiskMetadata : IDiskMetadata
     {
+        /// <inheritdoc/>
         public string FileSystemType { get; set; } = "Unknown";
+
+        /// <inheritdoc/>
         public long FileSizeBytes { get; set; }
+
+        /// <inheritdoc/>
         public string FileSizeFormatted { get; set; } = string.Empty;
+
+        /// <inheritdoc/>
         public List<string> Warnings { get; set; } = new List<string>();
+
+        /// <inheritdoc/>
         public bool HasErrors { get; set; }
+
+        /// <inheritdoc/>
         public string? ErrorMessage { get; set; }
 
         /// <summary>

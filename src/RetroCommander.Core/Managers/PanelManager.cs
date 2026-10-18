@@ -19,6 +19,12 @@ public class PanelManager
     private readonly IVolumeProviderFactory _providerFactory;
     private int _nextPanelId = 0;
 
+    /// <summary>
+    /// Creates a panel manager.
+    /// </summary>
+    /// <param name="providerFactory">
+    /// Factory used by <see cref="CreatePanelAsync"/> to open a panel for a URN.
+    /// </param>
     public PanelManager(IVolumeProviderFactory providerFactory)
     {
         _providerFactory = providerFactory;

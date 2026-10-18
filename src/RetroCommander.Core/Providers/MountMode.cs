@@ -24,7 +24,9 @@ public enum MountMode
     /// </summary>
     Auto = 0,
 
-    /// <summary>Always mount read-only, even when write access is available.</summary>
+    /// <summary>
+    /// Always mount read-only, even when write access is available.
+    /// </summary>
     ReadOnly = 1,
 
     /// <summary>

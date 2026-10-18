@@ -27,23 +27,45 @@ public partial class NdfsUserInfoWindow : Window
     private readonly int _userIndex;
     private readonly bool _isReadOnly;
 
-    /// <summary>A single friend row for the friends list binding.</summary>
+    /// <summary>
+    /// A single friend row for the friends list binding.
+    /// </summary>
     public sealed class FriendRow
     {
+        /// <summary>
+        /// Gets the NDFS user index of the friend.
+        /// </summary>
         public int Index { get; init; }
+
+        /// <summary>
+        /// Gets the friend's user name, looked up from <see cref="Index"/>.
+        /// </summary>
         public string Name { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets the friend's access rights as text, as the NDFS friend entry formats them.
+        /// </summary>
         public string Permissions { get; init; } = string.Empty;
     }
 
     // Parameterless ctor for the XAML designer only.
+    /// <summary>
+    /// Creates an empty window with no user shown. Meant for the XAML designer only.
+    /// </summary>
     public NdfsUserInfoWindow()
     {
         InitializeComponent();
     }
 
-    /// <param name="ndfs">The live mounted NDFS filesystem.</param>
-    /// <param name="userIndex">Index of the user to display.</param>
-    /// <param name="isReadOnly">True if the mount is read-only (reset will be blocked).</param>
+    /// <param name="ndfs">
+    /// The live mounted NDFS filesystem.
+    /// </param>
+    /// <param name="userIndex">
+    /// Index of the user to display.
+    /// </param>
+    /// <param name="isReadOnly">
+    /// True if the mount is read-only (reset will be blocked).
+    /// </param>
     public NdfsUserInfoWindow(INdfsFileSystem ndfs, int userIndex, bool isReadOnly)
         : this()
     {
@@ -70,7 +92,9 @@ public partial class NdfsUserInfoWindow : Window
         return null;
     }
 
-    /// <summary>Looks the user up by index in the live filesystem.</summary>
+    /// <summary>
+    /// Looks the user up by index in the live filesystem.
+    /// </summary>
     private UserEntry? FindUser()
     {
         if (_ndfs == null)
@@ -161,7 +185,9 @@ public partial class NdfsUserInfoWindow : Window
         NoFriendsText.IsVisible = rows.Count == 0;
     }
 
-    /// <summary>Resolves a user index to a name for the friends list, falling back to "#index".</summary>
+    /// <summary>
+    /// Resolves a user index to a name for the friends list, falling back to "#index".
+    /// </summary>
     private string ResolveUserName(int userIndex)
     {
         if (_ndfs == null)
@@ -176,11 +202,15 @@ public partial class NdfsUserInfoWindow : Window
         return $"#{userIndex}";
     }
 
-    /// <summary>Formats a 16-bit word as a 6-digit ND-style octal value with a trailing 'B'.</summary>
+    /// <summary>
+    /// Formats a 16-bit word as a 6-digit ND-style octal value with a trailing 'B'.
+    /// </summary>
     private static string FormatOctalWord(ushort value)
         => Convert.ToString(value, 8).PadLeft(6, '0') + "B";
 
-    /// <summary>Decodes a packed ND date to a readable string, or "N/A" when unset/invalid.</summary>
+    /// <summary>
+    /// Decodes a packed ND date to a readable string, or "N/A" when unset/invalid.
+    /// </summary>
     private static string FormatNdDate(uint raw)
     {
         DateTime? dt = NdDateTime.FromNdDate(raw);

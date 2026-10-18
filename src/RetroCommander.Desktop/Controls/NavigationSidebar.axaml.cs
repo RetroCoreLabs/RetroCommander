@@ -14,40 +14,92 @@ using RetroCommander.Desktop.ViewModels;
 
 namespace RetroCommander.Desktop.Controls
 {
+    /// <summary>
+    /// The left-hand navigation sidebar: collapsible sections for This PC, user folders,
+    /// favorites, recents and mounts, with a context menu on each item.
+    /// </summary>
     public partial class NavigationSidebar : UserControl
     {
+        /// <summary>
+        /// Gets the view model that holds the sidebar sections. The constructor creates it and
+        /// sets it as the control's data context.
+        /// </summary>
         public NavigationSidebarViewModel ViewModel { get; }
 
+        /// <summary>
+        /// Identifies the <see cref="SelectedItem"/> styled property.
+        /// </summary>
         public static readonly StyledProperty<SidebarItemViewModel?> SelectedItemProperty =
             AvaloniaProperty.Register<NavigationSidebar, SidebarItemViewModel?>(nameof(SelectedItem));
 
+        /// <summary>
+        /// Gets or sets the sidebar item the user last clicked or right-clicked, or null when none.
+        /// </summary>
         public SidebarItemViewModel? SelectedItem
         {
             get => GetValue(SelectedItemProperty);
             set => SetValue(SelectedItemProperty, value);
         }
 
+        /// <summary>
+        /// Identifies the bubbling routed event registered for <see cref="ItemSelected"/>.
+        /// </summary>
+        /// <remarks>
+        /// The control raises <see cref="ItemSelected"/> as a plain CLR event; this routed event
+        /// is registered but not raised by the code in this class.
+        /// </remarks>
         public static readonly RoutedEvent<SidebarItemSelectedEventArgs> ItemSelectedEvent =
             RoutedEvent.Register<NavigationSidebar, SidebarItemSelectedEventArgs>(nameof(ItemSelected), RoutingStrategies.Bubble);
 
+        /// <summary>
+        /// Raised when the user clicks a sidebar item, or picks "Open in Left Panel" or
+        /// "Open in Right Panel" from its context menu.
+        /// </summary>
         public event EventHandler<SidebarItemSelectedEventArgs>? ItemSelected;
 
+        /// <summary>
+        /// Identifies the bubbling routed event registered for <see cref="UnmountRequested"/>.
+        /// </summary>
+        /// <remarks>
+        /// The control raises <see cref="UnmountRequested"/> as a plain CLR event; this routed
+        /// event is registered but not raised by the code in this class.
+        /// </remarks>
         public static readonly RoutedEvent<SidebarItemSelectedEventArgs> UnmountRequestedEvent =
             RoutedEvent.Register<NavigationSidebar, SidebarItemSelectedEventArgs>(nameof(UnmountRequested), RoutingStrategies.Bubble);
 
+        /// <summary>
+        /// Raised when the user picks "Unmount" from the context menu and the selected item is a
+        /// <see cref="SidebarItemType.Mount"/> item.
+        /// </summary>
         public event EventHandler<SidebarItemSelectedEventArgs>? UnmountRequested;
 
         // Raised when the user picks "Mount" on a drive item; MainWindow opens the same Mount
         // dialog the toolbar's Mount button does (MountDialog has no path-seeding support, so
         // there's nothing more specific to pass through than which item triggered it).
+        /// <summary>
+        /// Identifies the bubbling routed event registered for <see cref="MountRequested"/>.
+        /// </summary>
+        /// <remarks>
+        /// The control raises <see cref="MountRequested"/> as a plain CLR event; this routed
+        /// event is registered but not raised by the code in this class.
+        /// </remarks>
         public static readonly RoutedEvent<SidebarItemSelectedEventArgs> MountRequestedEvent =
             RoutedEvent.Register<NavigationSidebar, SidebarItemSelectedEventArgs>(nameof(MountRequested), RoutingStrategies.Bubble);
 
+        /// <summary>
+        /// Raised when the user picks "Mount" from the context menu of a sidebar item.
+        /// </summary>
         public event EventHandler<SidebarItemSelectedEventArgs>? MountRequested;
 
         // Raised when the user picks "Properties" on a sidebar item; MainWindow shows the details.
+        /// <summary>
+        /// Raised when the user picks "Properties" from the context menu of a sidebar item.
+        /// </summary>
         public event EventHandler<SidebarItemSelectedEventArgs>? PropertiesRequested;
 
+        /// <summary>
+        /// Creates the sidebar, builds its view model and sets that view model as the data context.
+        /// </summary>
         public NavigationSidebar()
         {
             InitializeComponent();
@@ -259,11 +311,20 @@ namespace RetroCommander.Desktop.Controls
         }
     }
 
+    /// <summary>
+    /// Event data for the <see cref="NavigationSidebar"/> events: the item the user acted on and,
+    /// for "Open in Left/Right Panel", which panel was chosen.
+    /// </summary>
     public class SidebarItemSelectedEventArgs : RoutedEventArgs
     {
+        /// <summary>
+        /// Gets the sidebar item the event is about.
+        /// </summary>
         public SidebarItemViewModel Item { get; }
 
-        /// <summary>Which panel to target. Only meaningful when <see cref="PanelExplicit"/> is true.</summary>
+        /// <summary>
+        /// Which panel to target. Only meaningful when <see cref="PanelExplicit"/> is true.
+        /// </summary>
         public bool OpenInLeftPanel { get; }
 
         /// <summary>True when the target panel was chosen explicitly (context menu), false for a
@@ -271,6 +332,13 @@ namespace RetroCommander.Desktop.Controls
         public bool PanelExplicit { get; }
 
         // Normal click: no explicit panel choice -> caller uses the active panel.
+        /// <summary>
+        /// Creates event data for a normal click, with no explicit panel choice.
+        /// <see cref="PanelExplicit"/> is false and <see cref="OpenInLeftPanel"/> is true.
+        /// </summary>
+        /// <param name="item">
+        /// The sidebar item the event is about.
+        /// </param>
         public SidebarItemSelectedEventArgs(SidebarItemViewModel item)
         {
             Item = item;
@@ -279,6 +347,15 @@ namespace RetroCommander.Desktop.Controls
         }
 
         // Explicit "Open in Left/Right Panel".
+        /// <summary>
+        /// Creates event data for an explicit panel choice. <see cref="PanelExplicit"/> is true.
+        /// </summary>
+        /// <param name="item">
+        /// The sidebar item the event is about.
+        /// </param>
+        /// <param name="openInLeftPanel">
+        /// True to open the item in the left panel, false for the right panel.
+        /// </param>
         public SidebarItemSelectedEventArgs(SidebarItemViewModel item, bool openInLeftPanel)
         {
             Item = item;

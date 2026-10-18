@@ -16,13 +16,44 @@ namespace RetroCommander.Core.Managers;
 /// </summary>
 public class MountPoint
 {
+    /// <summary>
+    /// Gets or sets the mount ID. <see cref="MountManager"/> sets it to the ID of the panel created for the volume; a new GUID string by default.
+    /// </summary>
     public string Id { get; set; } = Guid.NewGuid().ToString();
+
+    /// <summary>
+    /// Gets or sets the URN the volume was mounted from.
+    /// </summary>
     public string Urn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the name shown for the volume.
+    /// </summary>
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the file system type name, taken from the panel.
+    /// </summary>
     public string FileSystemType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the volume is reached over a network, taken from the panel.
+    /// </summary>
     public bool IsRemote { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the volume can only be read, taken from the panel.
+    /// </summary>
     public bool IsReadOnly { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the mount point was created, in UTC.
+    /// </summary>
     public DateTime MountedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Gets or sets an optional free-text description, taken from <see cref="MountOptions.Description"/>.
+    /// </summary>
     public string? Description { get; set; }
 }
 
@@ -31,9 +62,24 @@ public class MountPoint
 /// </summary>
 public class MountOptions
 {
+    /// <summary>
+    /// Gets or sets the name to show for the volume. When null, the panel's own display name is used.
+    /// </summary>
     public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional free-text description stored on the mount point.
+    /// </summary>
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the new panel moves to <see cref="InitialPath"/> after mounting. Defaults to true.
+    /// </summary>
     public bool AutoNavigateToPath { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the path to open after mounting. Ignored when null or empty, or when <see cref="AutoNavigateToPath"/> is false.
+    /// </summary>
     public string? InitialPath { get; set; }
 }
 
@@ -47,6 +93,18 @@ public class MountManager
     private readonly PanelManager _panelManager;
     private readonly IRetroCommanderLogger? _logger;
 
+    /// <summary>
+    /// Creates a mount manager.
+    /// </summary>
+    /// <param name="providerFactory">
+    /// Factory that opens a panel for a URN.
+    /// </param>
+    /// <param name="panelManager">
+    /// Panel manager that new panels are registered with and removed from on unmount.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logger; when null nothing is logged.
+    /// </param>
     public MountManager(
         IVolumeProviderFactory providerFactory,
         PanelManager panelManager,

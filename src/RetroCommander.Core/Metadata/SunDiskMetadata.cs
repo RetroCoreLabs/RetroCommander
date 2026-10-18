@@ -14,32 +14,92 @@ namespace RetroCommander.Core.Metadata
     /// </summary>
     public sealed class SunDiskMetadata : IDiskMetadata
     {
+        /// <inheritdoc/>
         public string FileSystemType => "FFS (Sun Disk Label)";
+
+        /// <inheritdoc/>
         public long FileSizeBytes { get; set; }
+
+        /// <inheritdoc/>
         public string FileSizeFormatted { get; set; } = string.Empty;
+
+        /// <inheritdoc/>
         public List<string> Warnings { get; set; } = new List<string>();
+
+        /// <inheritdoc/>
         public bool HasErrors { get; set; }
+
+        /// <inheritdoc/>
         public string? ErrorMessage { get; set; }
 
         // Sun-specific fields
+        /// <summary>
+        /// Text label stored in the Sun disk label. May be empty.
+        /// </summary>
         public string LabelText { get; set; } = string.Empty;
 
         // Geometry
+        /// <summary>
+        /// Number of cylinders, from the disk label. Shown as the cylinder count.
+        /// </summary>
         public ushort NumCylinders { get; set; }
+
+        /// <summary>
+        /// Number of alternate cylinders, from the disk label.
+        /// </summary>
         public ushort NumAltCylinders { get; set; }
+
+        /// <summary>
+        /// Number of heads (tracks per cylinder), from the disk label.
+        /// </summary>
         public ushort NumHeads { get; set; }
+
+        /// <summary>
+        /// Sectors per track, from the disk label.
+        /// </summary>
         public ushort NumSectors { get; set; }
+
+        /// <summary>
+        /// Sector interleave, from the disk label.
+        /// </summary>
         public ushort Interleave { get; set; }
+
+        /// <summary>
+        /// Number of data cylinders, from the disk label.
+        /// </summary>
         public ushort DataCylinders { get; set; }
+
+        /// <summary>
+        /// Total number of sectors, as worked out by the disk label reader from its geometry.
+        /// </summary>
         public uint TotalSectors { get; set; }
+
+        /// <summary>
+        /// <see cref="TotalSectors"/> as display text, with the size in MB counted at 512 bytes
+        /// per sector.
+        /// </summary>
         public string TotalSectorsFormatted { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Drive rotation speed in revolutions per minute, from the disk label. Zero means unknown.
+        /// </summary>
         public ushort Rpm { get; set; }
 
         // Validation
+        /// <summary>
+        /// Magic number read from the disk label.
+        /// </summary>
         public ushort Magic { get; set; }
+
+        /// <summary>
+        /// True when <see cref="Magic"/> equals the Sun disk label magic <c>0xDABE</c>.
+        /// </summary>
         public bool IsMagicValid { get; set; }
 
         // Partitions
+        /// <summary>
+        /// Partitions listed by the Sun disk label.
+        /// </summary>
         public List<SunPartitionMetadata> Partitions { get; set; } = new List<SunPartitionMetadata>();
 
         /// <summary>
@@ -135,13 +195,40 @@ namespace RetroCommander.Core.Metadata
         }
     }
 
+    /// <summary>
+    /// One partition from a Sun disk label, for UI display.
+    /// </summary>
     public sealed class SunPartitionMetadata
     {
+        /// <summary>
+        /// Partition letter in upper case.
+        /// </summary>
         public string Letter { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Name of the partition's tag from the disk label.
+        /// </summary>
         public string Tag { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Partition size in bytes, counted at 512 bytes per sector.
+        /// </summary>
         public long SizeBytes { get; set; }
+
+        /// <summary>
+        /// <see cref="SizeBytes"/> as display text in B, KB or MB.
+        /// </summary>
         public string SizeFormatted { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Cylinder the partition starts on.
+        /// </summary>
         public uint StartCylinder { get; set; }
+
+        /// <summary>
+        /// Start of the partition as display text, giving both the cylinder and the LBA sector,
+        /// such as "Cyl 0, LBA 0".
+        /// </summary>
         public string OffsetFormatted { get; set; } = string.Empty;
     }
 }

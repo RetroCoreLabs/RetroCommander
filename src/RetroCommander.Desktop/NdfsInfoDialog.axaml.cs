@@ -11,16 +11,38 @@ using RetroCommander.Core.Metadata;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Dialog that shows the details of an NDFS volume and asks the user whether to mount it.
+/// </summary>
+/// <remarks>
+/// It closes with true when the user clicks Mount and false on Cancel.
+/// </remarks>
 public partial class NdfsInfoDialog : Window
 {
+    /// <summary>
+    /// Gets whether the user clicked Mount. False after Cancel or when the window was closed another way.
+    /// </summary>
     public bool MountConfirmed { get; private set; }
+
+    /// <summary>
+    /// Gets whether the "don't show again" box was ticked when the user clicked Mount. False after Cancel.
+    /// </summary>
     public bool DontShowAgain { get; private set; }
 
+    /// <summary>
+    /// Creates the dialog with all fields empty.
+    /// </summary>
     public NdfsInfoDialog()
     {
         InitializeComponent();
     }
 
+    /// <summary>
+    /// Creates the dialog and fills its fields from an NDFS metadata snapshot.
+    /// </summary>
+    /// <param name="metadata">
+    /// The volume details to show: names, capacity, system number, boot format, block addresses, checksum and warnings.
+    /// </param>
     public NdfsInfoDialog(NdfsMetadata metadata) : this()
     {
         PopulateFields(metadata);

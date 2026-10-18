@@ -33,15 +33,22 @@ namespace RetroCommander.Desktop.Themes
     public sealed class ThemeManager
     {
         // Single shared instance — the App and the Settings dialog both talk to this.
+        /// <summary>
+        /// Gets the single shared theme manager.
+        /// </summary>
         public static ThemeManager Instance { get; } = new ThemeManager();
 
         private Application? _app;
         private readonly List<ThemeDefinition> _themes = new();
 
-        /// <summary>All themes the user can choose from (in display order).</summary>
+        /// <summary>
+        /// All themes the user can choose from (in display order).
+        /// </summary>
         public IReadOnlyList<ThemeDefinition> Themes => _themes;
 
-        /// <summary>The currently applied theme (never null after <see cref="Initialize"/>).</summary>
+        /// <summary>
+        /// The currently applied theme (never null after <see cref="Initialize"/>).
+        /// </summary>
         public ThemeDefinition Current { get; private set; } = null!;
 
         private ThemeManager()
@@ -80,8 +87,12 @@ namespace RetroCommander.Desktop.Themes
         /// <summary>
         /// Applies the theme with the given id immediately (live re-colour of the whole UI).
         /// </summary>
-        /// <param name="themeId">Id of one of <see cref="Themes"/>.</param>
-        /// <param name="persist">When true the choice is written to disk for next launch.</param>
+        /// <param name="themeId">
+        /// Id of one of <see cref="Themes"/>.
+        /// </param>
+        /// <param name="persist">
+        /// When true the choice is written to disk for next launch.
+        /// </param>
         public void Apply(string themeId, bool persist = true)
         {
             if (_app == null) return;
@@ -369,14 +380,47 @@ namespace RetroCommander.Desktop.Themes
         // the on-disk ui-settings.json document).
     }
 
-    /// <summary>One selectable theme: an id, a display name, its Avalonia variant and palette.</summary>
+    /// <summary>
+    /// One selectable theme: an id, a display name, its Avalonia variant and palette.
+    /// </summary>
     public sealed class ThemeDefinition
     {
+        /// <summary>
+        /// Gets the theme id, for example <c>Light</c> or <c>SolarizedDark</c>. This is the
+        /// value saved to the settings file and passed to <see cref="ThemeManager.Apply"/>.
+        /// </summary>
         public string Id { get; }
+
+        /// <summary>
+        /// Gets the name shown to the user, for example <c>Solarized Dark</c>.
+        /// </summary>
         public string DisplayName { get; }
+
+        /// <summary>
+        /// Gets the Avalonia theme variant that selects this theme's brush dictionary.
+        /// </summary>
         public ThemeVariant Variant { get; }
+
+        /// <summary>
+        /// Gets the colours this theme uses for the shared brush keys.
+        /// </summary>
         public Palette Palette { get; }
 
+        /// <summary>
+        /// Creates a theme definition from its parts.
+        /// </summary>
+        /// <param name="id">
+        /// The theme id saved to the settings file.
+        /// </param>
+        /// <param name="displayName">
+        /// The name shown to the user.
+        /// </param>
+        /// <param name="variant">
+        /// The Avalonia theme variant for this theme.
+        /// </param>
+        /// <param name="palette">
+        /// The colours for this theme.
+        /// </param>
         public ThemeDefinition(string id, string displayName, ThemeVariant variant, Palette palette)
         {
             Id = id;
@@ -392,27 +436,105 @@ namespace RetroCommander.Desktop.Themes
     /// </summary>
     public sealed class Palette
     {
+        /// <summary>
+        /// Hex colour for the <c>FluentBackgroundPrimaryBrush</c> resource.
+        /// </summary>
         public string BackgroundPrimary = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentBackgroundSecondaryBrush</c> resource.
+        /// </summary>
         public string BackgroundSecondary = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSurfaceAltBrush</c> resource.
+        /// </summary>
         public string SurfaceAlt = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentBorderLightBrush</c> resource.
+        /// </summary>
         public string BorderLight = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentBorderDarkBrush</c> resource.
+        /// </summary>
         public string BorderDark = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentAccentBlueBrush</c> resource. The name is historical; in
+        /// several themes this accent is not blue.
+        /// </summary>
         public string AccentBlue = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentTextPrimaryBrush</c> resource.
+        /// </summary>
         public string TextPrimary = "#FFFFFF";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentTextSecondaryBrush</c> resource.
+        /// </summary>
         public string TextSecondary = "#FFFFFF";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSelectionHighlightBrush</c> resource.
+        /// </summary>
         public string SelectionHighlight = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentHoverHighlightBrush</c> resource.
+        /// </summary>
         public string HoverHighlight = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSidebarBackgroundBrush</c> resource.
+        /// </summary>
         public string SidebarBackground = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSidebarSeparatorBrush</c> resource.
+        /// </summary>
         public string SidebarSeparator = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentWarningBackgroundBrush</c> resource.
+        /// </summary>
         public string WarningBackground = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentWarningBorderBrush</c> resource.
+        /// </summary>
         public string WarningBorder = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSuccessBackgroundBrush</c> resource.
+        /// </summary>
         public string SuccessBackground = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentSuccessBorderBrush</c> resource.
+        /// </summary>
         public string SuccessBorder = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentErrorBackgroundBrush</c> resource.
+        /// </summary>
         public string ErrorBackground = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentErrorBorderBrush</c> resource.
+        /// </summary>
         public string ErrorBorder = "#000000";
+
+        /// <summary>
+        /// Hex colour for the <c>FluentErrorTextBrush</c> resource.
+        /// </summary>
         public string ErrorText = "#FFFFFF";
 
-        /// <summary>Returns the hex values in the canonical brush-key order.</summary>
+        /// <summary>
+        /// Returns the hex values in the canonical brush-key order.
+        /// </summary>
         public string[] ToArray()
         {
             return new[]

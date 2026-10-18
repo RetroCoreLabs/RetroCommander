@@ -17,11 +17,34 @@ namespace RetroCommander.Core.Configuration;
 /// </summary>
 public class RetroCommanderConfiguration
 {
+    /// <summary>
+    /// Gets or sets the logging settings.
+    /// </summary>
     public LoggingConfiguration Logging { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the cache settings.
+    /// </summary>
     public CacheConfiguration Cache { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the list of volumes mounted before, kept by <see cref="ConfigurationManager.UpdateMountHistory"/>.
+    /// </summary>
     public List<MountHistoryEntry> MountHistory { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the saved bookmarks.
+    /// </summary>
     public List<Bookmark> Bookmarks { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the user interface preferences.
+    /// </summary>
     public UIPreferences UI { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the default settings for copy and move operations.
+    /// </summary>
     public TransferDefaults Transfer { get; set; } = new();
 }
 
@@ -30,10 +53,29 @@ public class RetroCommanderConfiguration
 /// </summary>
 public class MountHistoryEntry
 {
+    /// <summary>
+    /// Gets or sets the URN of the mounted volume. History entries are matched on this value.
+    /// </summary>
     public string Urn { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the name shown for the volume.
+    /// </summary>
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the file system type name, for example <c>NDFS</c> or <c>D64</c>.
+    /// </summary>
     public string FileSystemType { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets when the volume was last mounted, in UTC.
+    /// </summary>
     public DateTime LastAccessed { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many times the volume has been mounted.
+    /// </summary>
     public int AccessCount { get; set; }
 }
 
@@ -42,12 +84,39 @@ public class MountHistoryEntry
 /// </summary>
 public class UIPreferences
 {
+    /// <summary>
+    /// Gets or sets the URN of the volume last shown in the left panel, or null if none was saved.
+    /// </summary>
     public string? LastLeftPanelUrn { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URN of the volume last shown in the right panel, or null if none was saved.
+    /// </summary>
     public string? LastRightPanelUrn { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the colour theme. Defaults to <c>Default</c>.
+    /// </summary>
     public string Theme { get; set; } = "Default";
+
+    /// <summary>
+    /// Gets or sets whether hidden files are listed. Defaults to false.
+    /// </summary>
     public bool ShowHiddenFiles { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the .NET format string for dates and times. Defaults to <c>yyyy-MM-dd HH:mm</c>.
+    /// </summary>
     public string DateTimeFormat { get; set; } = "yyyy-MM-dd HH:mm";
+
+    /// <summary>
+    /// Gets or sets whether to ask before deleting. Defaults to true.
+    /// </summary>
     public bool ConfirmDelete { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether to ask before overwriting an existing file. Defaults to true.
+    /// </summary>
     public bool ConfirmOverwrite { get; set; } = true;
 }
 
@@ -56,8 +125,19 @@ public class UIPreferences
 /// </summary>
 public class TransferDefaults
 {
+    /// <summary>
+    /// Gets or sets whether file properties are carried over when copying. Defaults to true.
+    /// </summary>
     public bool PreserveProperties { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether a copy is checked after it is written. Defaults to false.
+    /// </summary>
     public bool VerifyAfterCopy { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets whether a progress dialog is shown during a transfer. Defaults to true.
+    /// </summary>
     public bool ShowProgressDialog { get; set; } = true;
 }
 
@@ -69,6 +149,12 @@ public class ConfigurationManager
     private readonly string _configFilePath;
     private RetroCommanderConfiguration _config;
 
+    /// <summary>
+    /// Creates the manager and loads the configuration file right away.
+    /// </summary>
+    /// <param name="configFilePath">
+    /// Path of the JSON configuration file. When null, <c>RetroCommander\config.json</c> under the local application data folder is used.
+    /// </param>
     public ConfigurationManager(string? configFilePath = null)
     {
         _configFilePath = configFilePath ?? GetDefaultConfigPath();

@@ -14,6 +14,13 @@ using RetroCommander.Desktop.Themes;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Read-only viewer for a file's contents, shown either as text or as a hex dump.
+/// </summary>
+/// <remarks>
+/// Text mode can wrap lines and clear bit 7 of every byte before showing it. Data that looks binary
+/// (see <see cref="IsBinaryData"/>) opens in hex mode.
+/// </remarks>
 public partial class FileViewerDialog : Window
 {
     private byte[] _fileData = Array.Empty<byte>();
@@ -24,6 +31,9 @@ public partial class FileViewerDialog : Window
     // Maximum file size to load (10 MB)
     private const int MaxFileSize = 10 * 1024 * 1024;
 
+    /// <summary>
+    /// Creates an empty viewer with the viewer font from the user settings.
+    /// </summary>
     public FileViewerDialog()
     {
         InitializeComponent();
@@ -38,6 +48,15 @@ public partial class FileViewerDialog : Window
         ContentViewer.FontSize = s.ViewerFontSize;
     }
 
+    /// <summary>
+    /// Creates the viewer for one file and shows its contents, in hex mode if the data looks binary.
+    /// </summary>
+    /// <param name="fileName">
+    /// The file name shown in the title and the header.
+    /// </param>
+    /// <param name="data">
+    /// The file contents to show.
+    /// </param>
     public FileViewerDialog(string fileName, byte[] data) : this()
     {
         _fileName = fileName;
@@ -58,6 +77,18 @@ public partial class FileViewerDialog : Window
         UpdateContent();
     }
 
+    /// <summary>
+    /// Creates a viewer for one file. Same as calling the constructor that takes a file name and data.
+    /// </summary>
+    /// <param name="fileName">
+    /// The file name shown in the title and the header.
+    /// </param>
+    /// <param name="data">
+    /// The file contents to show.
+    /// </param>
+    /// <returns>
+    /// The new viewer, not yet shown.
+    /// </returns>
     public static FileViewerDialog CreateForFile(string fileName, byte[] data)
     {
         return new FileViewerDialog(fileName, data);
@@ -222,6 +253,16 @@ public partial class FileViewerDialog : Window
 
     // Exposed for OnF4Edit (MainWindow.axaml.cs) to decide whether a file is safe to open in the
     // text editor — shares this heuristic instead of duplicating it.
+    /// <summary>
+    /// Guesses whether data is binary rather than text by looking at its first 4096 bytes.
+    /// </summary>
+    /// <param name="data">
+    /// The data to check.
+    /// </param>
+    /// <returns>
+    /// True if the checked bytes hold any zero byte, or if more than 10 percent of them are control characters
+    /// other than tab, LF and CR; false otherwise, and false for empty data.
+    /// </returns>
     public static bool IsBinaryData(byte[] data)
     {
         if (data.Length == 0)

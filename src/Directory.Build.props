@@ -12,6 +12,10 @@
     <Company>RetroCoreLabs</Company>
     <Copyright>Copyright (c) 1985-$([System.DateTime]::Now.Year) Ronny Hansen</Copyright>
     <IsPackable>false</IsPackable>
+    <!-- XML docs for the shipped projects: they feed the DocFX API site (src/docfx), and with
+         TreatWarningsAsErrors a public member without a <summary> (CS1591) fails the build.
+         Test projects are not documented. -->
+    <GenerateDocumentationFile Condition="!$(MSBuildProjectName.EndsWith('.Tests'))">true</GenerateDocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
     <IsTestProject>true</IsTestProject>

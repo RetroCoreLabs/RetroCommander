@@ -14,6 +14,15 @@ namespace RetroCommander.Core.Transfer;
 /// </summary>
 public class DirectPropertyMapper : IPropertyMapper
 {
+    /// <summary>
+    /// Copies every key and value from <paramref name="source"/> to <paramref name="target"/>.
+    /// </summary>
+    /// <param name="source">
+    /// The bag to read from.
+    /// </param>
+    /// <param name="target">
+    /// The bag to write to. Values already there under the same keys are replaced; other keys are left alone.
+    /// </param>
     public void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         var allProps = source.GetAllProperties();

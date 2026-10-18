@@ -15,13 +15,31 @@ using RetroCommander.Desktop.ViewModels;
 
 namespace RetroCommander.Desktop.Controls
 {
+    /// <summary>
+    /// The quick access toolbar: Back button, address bar, and the Mounts and Recents flyouts.
+    /// </summary>
     public partial class QuickAccessBar : UserControl
     {
+        /// <summary>
+        /// Gets the view model that holds the mount and recent lists. The constructor creates it
+        /// and sets it as the control's data context.
+        /// </summary>
         public QuickAccessBarViewModel ViewModel { get; }
 
+        /// <summary>
+        /// Identifies the bubbling routed event registered for <see cref="ItemSelected"/>.
+        /// </summary>
+        /// <remarks>
+        /// The control raises <see cref="ItemSelected"/> as a plain CLR event; this routed event
+        /// is registered but not raised by the code in this class.
+        /// </remarks>
         public static readonly RoutedEvent<QuickAccessItemSelectedEventArgs> ItemSelectedEvent =
             RoutedEvent.Register<QuickAccessBar, QuickAccessItemSelectedEventArgs>(nameof(ItemSelected), RoutingStrategies.Bubble);
 
+        /// <summary>
+        /// Raised when the user clicks an item in the Mounts or Recents flyout. The flyout is
+        /// closed after the event is raised.
+        /// </summary>
         public event EventHandler<QuickAccessItemSelectedEventArgs>? ItemSelected;
 
         /// <summary>
@@ -36,6 +54,9 @@ namespace RetroCommander.Desktop.Controls
         /// </summary>
         public event EventHandler<RoutedEventArgs>? MountNewRequested;
 
+        /// <summary>
+        /// Creates the bar, builds its view model and sets that view model as the data context.
+        /// </summary>
         public QuickAccessBar()
         {
             InitializeComponent();
@@ -49,14 +70,18 @@ namespace RetroCommander.Desktop.Controls
         /// </summary>
         public event EventHandler<string>? AddressNavigationRequested;
 
-        /// <summary>Enables/disables the Back button (driven by MainWindow's history state).</summary>
+        /// <summary>
+        /// Enables/disables the Back button (driven by MainWindow's history state).
+        /// </summary>
         public void SetBackEnabled(bool enabled)
         {
             if (BackButton != null)
                 BackButton.IsEnabled = enabled;
         }
 
-        /// <summary>Updates the address bar to reflect the active panel's current path.</summary>
+        /// <summary>
+        /// Updates the address bar to reflect the active panel's current path.
+        /// </summary>
         public void SetAddressPath(string? path)
         {
             if (AddressBox != null)
@@ -122,10 +147,22 @@ namespace RetroCommander.Desktop.Controls
         }
     }
 
+    /// <summary>
+    /// Event data for <see cref="QuickAccessBar.ItemSelected"/>: the item the user clicked.
+    /// </summary>
     public class QuickAccessItemSelectedEventArgs : RoutedEventArgs
     {
+        /// <summary>
+        /// Gets the quick access item the user clicked.
+        /// </summary>
         public QuickAccessItemViewModel Item { get; }
 
+        /// <summary>
+        /// Creates event data for the given item.
+        /// </summary>
+        /// <param name="item">
+        /// The quick access item the user clicked.
+        /// </param>
         public QuickAccessItemSelectedEventArgs(QuickAccessItemViewModel item)
         {
             Item = item;

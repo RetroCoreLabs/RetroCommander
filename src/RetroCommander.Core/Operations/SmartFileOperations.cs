@@ -23,12 +23,50 @@ public class SmartFileOperations : IFileOperationsManager
     private readonly PropertyMapperRegistry _mapperRegistry;
     private readonly IRetroCommanderLogger? _logger;
 
+    /// <summary>
+    /// Creates the file operations service.
+    /// </summary>
+    /// <param name="mapperRegistry">
+    /// Registry that picks the property mapper for a source and target file system type.
+    /// When null, <see cref="PropertyMapperRegistry.CreateDefault"/> is used.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logger; when null nothing is logged.
+    /// </param>
     public SmartFileOperations(PropertyMapperRegistry? mapperRegistry = null, IRetroCommanderLogger? logger = null)
     {
         _mapperRegistry = mapperRegistry ?? PropertyMapperRegistry.CreateDefault();
         _logger = logger;
     }
 
+    /// <summary>
+    /// Copies one file into the current folder of <paramref name="targetPanel"/>, mapping its properties to the target file system.
+    /// </summary>
+    /// <remarks>
+    /// Steps, in order:
+    ///  - A ".xat" sidecar going into NDFS with <see cref="CopyOptions.UseXatMetadataOnImport"/> set is skipped, not copied.
+    ///  - If a file with the target name already exists on the host disk and <see cref="CopyOptions.Overwrite"/> is false, the copy fails.
+    ///  - When <see cref="CopyOptions.PreserveProperties"/> is set, the source properties are mapped and the kept and lost property names are recorded.
+    ///  - When importing into NDFS, NDFS metadata from a ".xat" sidecar next to the source is added on top of the mapped properties.
+    ///  - The content is written with <see cref="IFileSystemPanel.CreateFileAsync"/>, reporting progress to <see cref="CopyOptions.Progress"/>.
+    ///  - When copying out to a non-NDFS target, NDFS metadata is written to a ".xat" sidecar if <see cref="CopyOptions.PreserveNdfsMetadataOnExport"/> is set.
+    /// Errors are caught and returned as a failed result, not thrown.
+    /// </remarks>
+    /// <param name="source">
+    /// The file to copy.
+    /// </param>
+    /// <param name="targetPanel">
+    /// The panel whose current folder receives the copy.
+    /// </param>
+    /// <param name="options">
+    /// Copy settings; when null, a default <see cref="CopyOptions"/> is used.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to cancel the copy.
+    /// </param>
+    /// <returns>
+    /// A result that says whether the copy worked, was skipped, or failed, and which properties were kept or lost.
+    /// </returns>
     public async Task<CopyResult> CopyAsync(
         IFileSystemEntry source,
         IFileSystemPanel targetPanel,
@@ -175,6 +213,31 @@ public class SmartFileOperations : IFileOperationsManager
         }
     }
 
+    /// <summary>
+    /// Moves one file by copying it with <see cref="CopyAsync"/> and then deleting the source.
+    /// </summary>
+    /// <remarks>
+    /// The source is deleted only if the copy succeeded. The result of the delete step is not checked.
+    /// Errors are caught and returned as a failed result, not thrown.
+    /// </remarks>
+    /// <param name="source">
+    /// The file to move.
+    /// </param>
+    /// <param name="sourcePanel">
+    /// The panel the file is deleted from after the copy.
+    /// </param>
+    /// <param name="targetPanel">
+    /// The panel whose current folder receives the file.
+    /// </param>
+    /// <param name="options">
+    /// Move settings, passed on to the copy step; when null, a default <see cref="MoveOptions"/> is used.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to cancel the move.
+    /// </param>
+    /// <returns>
+    /// A result that says whether the move worked, with the error message if it did not.
+    /// </returns>
     public async Task<MoveResult> MoveAsync(
         IFileSystemEntry source,
         IFileSystemPanel sourcePanel,
@@ -215,6 +278,24 @@ public class SmartFileOperations : IFileOperationsManager
         }
     }
 
+    /// <summary>
+    /// Deletes one entry through <paramref name="panel"/>.
+    /// </summary>
+    /// <remarks>
+    /// Errors are caught and returned as a failed result, not thrown.
+    /// </remarks>
+    /// <param name="entry">
+    /// The entry to delete.
+    /// </param>
+    /// <param name="panel">
+    /// The panel that holds the entry.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to cancel the delete.
+    /// </param>
+    /// <returns>
+    /// A result that says whether the delete worked, with the error message if it did not.
+    /// </returns>
     public async Task<DeleteResult> DeleteAsync(
         IFileSystemEntry entry,
         IFileSystemPanel panel,
@@ -233,6 +314,27 @@ public class SmartFileOperations : IFileOperationsManager
         }
     }
 
+    /// <summary>
+    /// Renames one entry through <paramref name="panel"/>.
+    /// </summary>
+    /// <remarks>
+    /// Errors are caught and returned as a failed result, not thrown.
+    /// </remarks>
+    /// <param name="entry">
+    /// The entry to rename.
+    /// </param>
+    /// <param name="panel">
+    /// The panel that holds the entry.
+    /// </param>
+    /// <param name="newName">
+    /// The new name for the entry.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token to cancel the rename.
+    /// </param>
+    /// <returns>
+    /// A result that says whether the rename worked, with the error message if it did not.
+    /// </returns>
     public async Task<RenameResult> RenameAsync(
         IFileSystemEntry entry,
         IFileSystemPanel panel,
@@ -252,6 +354,24 @@ public class SmartFileOperations : IFileOperationsManager
         }
     }
 
+    /// <summary>
+    /// Copies each entry in turn with <see cref="CopyAsync"/>, carrying on past failures.
+    /// </summary>
+    /// <param name="sources">
+    /// The files to copy, in the order they are copied.
+    /// </param>
+    /// <param name="targetPanel">
+    /// The panel whose current folder receives the copies.
+    /// </param>
+    /// <param name="options">
+    /// Copy settings used for every entry; when null, defaults are used.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token passed to each copy.
+    /// </param>
+    /// <returns>
+    /// The number copied, plus the names and error messages of those that failed and the names of those skipped.
+    /// </returns>
     public async Task<BatchOperationResult> CopyManyAsync(
         IReadOnlyList<IFileSystemEntry> sources,
         IFileSystemPanel targetPanel,
@@ -279,6 +399,27 @@ public class SmartFileOperations : IFileOperationsManager
         return batchResult;
     }
 
+    /// <summary>
+    /// Moves each entry in turn with <see cref="MoveAsync"/>, carrying on past failures.
+    /// </summary>
+    /// <param name="sources">
+    /// The files to move, in the order they are moved.
+    /// </param>
+    /// <param name="sourcePanel">
+    /// The panel the files are deleted from after each copy.
+    /// </param>
+    /// <param name="targetPanel">
+    /// The panel whose current folder receives the files.
+    /// </param>
+    /// <param name="options">
+    /// Move settings used for every entry; when null, defaults are used.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token passed to each move.
+    /// </param>
+    /// <returns>
+    /// The number moved, plus the names and error messages of those that failed.
+    /// </returns>
     public async Task<BatchOperationResult> MoveManyAsync(
         IReadOnlyList<IFileSystemEntry> sources,
         IFileSystemPanel sourcePanel,
@@ -303,6 +444,21 @@ public class SmartFileOperations : IFileOperationsManager
         return batchResult;
     }
 
+    /// <summary>
+    /// Deletes each entry in turn with <see cref="DeleteAsync"/>, carrying on past failures.
+    /// </summary>
+    /// <param name="entries">
+    /// The entries to delete, in the order they are deleted.
+    /// </param>
+    /// <param name="panel">
+    /// The panel that holds the entries.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Token passed to each delete.
+    /// </param>
+    /// <returns>
+    /// The number deleted, plus the names and error messages of those that failed.
+    /// </returns>
     public async Task<BatchOperationResult> DeleteManyAsync(
         IReadOnlyList<IFileSystemEntry> entries,
         IFileSystemPanel panel,
@@ -384,7 +540,7 @@ public class SmartFileOperations : IFileOperationsManager
     /// Filters a property bag down to just the NDFS-specific ("ndfs."-prefixed) entries, for
     /// exporting as a .xat sidecar (see TryWriteNdfsMetadataSidecarAsync). The "is this an NDFS
     /// key" rule itself lives in exactly one place — NdfsPropertyBagKeys.IsNdfsProperty — this and
-    /// its IDictionary&lt;string,object&gt; overload below are thin, differently-shaped adapters
+    /// its string-to-object dictionary overload below are thin, differently-shaped adapters
     /// over that single rule (IPropertyBag and NdfsXatSerializer's output are two genuinely
     /// different CLR shapes — an IPropertyBag value can be null, NdfsXatSerializer's cannot — so one
     /// generic method can't cover both without extra allocation/casting for no real benefit).
@@ -403,7 +559,9 @@ public class SmartFileOperations : IFileOperationsManager
         return result;
     }
 
-    /// <summary>See <see cref="ExtractNdfsProperties(IPropertyBag)"/>.</summary>
+    /// <summary>
+    /// See <see cref="ExtractNdfsProperties(IPropertyBag)"/>.
+    /// </summary>
     private static Dictionary<string, object> ExtractNdfsProperties(IDictionary<string, object> properties)
     {
         var result = new Dictionary<string, object>();

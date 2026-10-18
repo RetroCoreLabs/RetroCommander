@@ -22,6 +22,17 @@ namespace RetroCommander.Core;
 /// </summary>
 public static class CoreDemo
 {
+    /// <summary>
+    /// Runs the demo and writes what it does to the console.
+    /// </summary>
+    /// <remarks>
+    /// Copies the first file found in the user's Documents folder to the temp folder (creating a
+    /// test file first if Documents is empty), then mounts a test NDFS image and lists it if one
+    /// is found under demo/test-images/ndfs in a parent folder of the program.
+    /// </remarks>
+    /// <returns>
+    /// A task that finishes when both demo steps are done.
+    /// </returns>
     public static async Task RunDemoAsync()
     {
         Console.WriteLine("=== RetroCommander.Core Demo ===\n");

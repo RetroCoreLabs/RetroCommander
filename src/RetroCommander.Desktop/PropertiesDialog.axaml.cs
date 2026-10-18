@@ -27,11 +27,23 @@ namespace RetroCommander.Desktop
     {
         // Designer/XAML-loader parameterless constructor only; real use goes through the
         // IFileSystemEntry overload below.
+        /// <summary>
+        /// Creates an empty dialog with no entry shown. Meant for the XAML designer and loader only.
+        /// </summary>
         public PropertiesDialog()
         {
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Creates the dialog for one file or directory and fills in its standard fields and every non-null property in its property bag.
+        /// </summary>
+        /// <param name="entry">
+        /// The file or directory to show.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="entry"/> is null.
+        /// </exception>
         public PropertiesDialog(IFileSystemEntry entry) : this()
         {
             if (entry == null)
@@ -104,7 +116,9 @@ namespace RetroCommander.Desktop
                    key == "ndfs.last_entered";
         }
 
-        /// <summary>Turns "ndfs.object_name" into "Object Name" for a readable label.</summary>
+        /// <summary>
+        /// Turns "ndfs.object_name" into "Object Name" for a readable label.
+        /// </summary>
         private static string FormatPropertyKey(string key)
         {
             int dot = key.LastIndexOf('.');

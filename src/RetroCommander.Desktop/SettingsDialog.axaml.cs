@@ -36,6 +36,9 @@ namespace RetroCommander.Desktop
         // Selectable viewer font sizes (points).
         private static readonly double[] s_viewerSizes = { 9, 10, 11, 12, 13, 14, 16, 18, 20 };
 
+        /// <summary>
+        /// Creates the dialog and fills its controls from the saved theme, viewer font, mount and file transfer settings.
+        /// </summary>
         public SettingsDialog()
         {
             InitializeComponent();

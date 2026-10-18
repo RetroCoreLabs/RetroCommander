@@ -35,6 +35,9 @@ public partial class DiskInfoWindow : Window
 {
     private VolumeInfo? _info;
 
+    /// <summary>
+    /// Creates an empty window with nothing rendered. The other constructors call this first.
+    /// </summary>
     public DiskInfoWindow()
     {
         InitializeComponent();
@@ -44,9 +47,15 @@ public partial class DiskInfoWindow : Window
     /// Creates the window for a mounted driver, using the driver's own volume info when it
     /// provides any and a generic description otherwise.
     /// </summary>
-    /// <param name="driver">The mounted driver.</param>
-    /// <param name="imagePath">Backing image path, when known.</param>
-    /// <param name="isReadOnly">Whether the volume was mounted read-only.</param>
+    /// <param name="driver">
+    /// The mounted driver.
+    /// </param>
+    /// <param name="imagePath">
+    /// Backing image path, when known.
+    /// </param>
+    /// <param name="isReadOnly">
+    /// Whether the volume was mounted read-only.
+    /// </param>
     public DiskInfoWindow(IFileSystemDriver driver, string imagePath, bool isReadOnly) : this()
     {
         _info = VolumeInfoBuilder.Build(driver, imagePath, isReadOnly);

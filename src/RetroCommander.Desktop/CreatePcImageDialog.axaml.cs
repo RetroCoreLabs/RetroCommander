@@ -16,10 +16,19 @@ using RetroIO.Storage.Local;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Dialog that creates a new PC disk image file, either a floppy of a chosen size or a hard disk from a preset.
+/// </summary>
+/// <remarks>
+/// The dialog closes with the path of the created file as its result, or with null when the user cancels.
+/// </remarks>
 public partial class CreatePcImageDialog : Window
 {
     private string? _outputPath;
 
+    /// <summary>
+    /// Creates the dialog, hooks up the input controls and fills in the first preview.
+    /// </summary>
     public CreatePcImageDialog()
     {
         InitializeComponent();

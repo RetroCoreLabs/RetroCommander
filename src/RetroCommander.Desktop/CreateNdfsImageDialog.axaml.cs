@@ -17,10 +17,19 @@ using RetroIO.Storage.Ndfs.Creation;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Dialog that creates a new, empty NDFS disk image file from a size template or a custom page count.
+/// </summary>
+/// <remarks>
+/// The dialog closes with the path of the created file as its result, or with null when the user cancels.
+/// </remarks>
 public partial class CreateNdfsImageDialog : Window
 {
     private string? _outputPath;
 
+    /// <summary>
+    /// Creates the dialog, hooks up the input controls and fills in the first preview.
+    /// </summary>
     public CreateNdfsImageDialog()
     {
         InitializeComponent();
@@ -39,6 +48,10 @@ public partial class CreateNdfsImageDialog : Window
 
     // Cap the auto-fit (SizeToContent="Height") to the screen working area so the window can't
     // grow off-screen when both the Custom-size and Extended-info panels are expanded.
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Limits the window height to 92 percent of the working area of the screen it is on.
+    /// </remarks>
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);

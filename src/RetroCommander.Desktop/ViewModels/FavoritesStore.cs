@@ -19,14 +19,25 @@ namespace RetroCommander.Desktop.ViewModels
     /// </summary>
     public sealed class FavoriteRecord
     {
+        /// <summary>
+        /// Gets or sets the name shown for the favorite in the sidebar.
+        /// </summary>
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>The mount URN (for Mount favorites, re-mountable) or the folder path.</summary>
+        /// <summary>
+        /// The mount URN (for Mount favorites, re-mountable) or the folder path.
+        /// </summary>
         public string Path { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Gets or sets the filesystem type label of the favorite's target, such as <c>NDFS</c>
+        /// or <c>D64</c>. It picks the sidebar icon for a mount favorite and may be empty.
+        /// </summary>
         public string FilesystemType { get; set; } = string.Empty;
 
-        /// <summary>Enum name of <see cref="SidebarItemType"/> the favorite points at.</summary>
+        /// <summary>
+        /// Enum name of <see cref="SidebarItemType"/> the favorite points at.
+        /// </summary>
         public string OriginType { get; set; } = nameof(SidebarItemType.UserFolder);
     }
 
@@ -59,7 +70,9 @@ namespace RetroCommander.Desktop.ViewModels
             return Path.Combine(GetDirectory(), "favorites.json");
         }
 
-        /// <summary>Load the persisted favorites (empty list if none / unreadable).</summary>
+        /// <summary>
+        /// Load the persisted favorites (empty list if none / unreadable).
+        /// </summary>
         public static List<FavoriteRecord> Load()
         {
             try
@@ -82,7 +95,9 @@ namespace RetroCommander.Desktop.ViewModels
             return new List<FavoriteRecord>();
         }
 
-        /// <summary>Persist the given favorites (best-effort; IO failures are ignored).</summary>
+        /// <summary>
+        /// Persist the given favorites (best-effort; IO failures are ignored).
+        /// </summary>
         public static void Save(IList<FavoriteRecord> favorites)
         {
             try

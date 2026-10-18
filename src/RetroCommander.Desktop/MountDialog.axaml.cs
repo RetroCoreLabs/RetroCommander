@@ -21,14 +21,33 @@ using RetroIO.Storage.Ndfs.FileSystems;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// Dialog where the user picks a filesystem type, an image path and, where it applies, a partition, and sees the URN that will be mounted.
+/// </summary>
+/// <remarks>
+/// It closes with the URN text as its result when the user clicks Mount, or with null on Cancel.
+/// When NDFS is selected and the file exists, it also shows the NDFS volume details and user list.
+/// </remarks>
 public partial class MountDialog : Window
 {
     private readonly DriverFactory _driverFactory;
 
+    /// <summary>
+    /// Creates the dialog with a new, empty <see cref="DriverFactory"/> that has no drivers registered.
+    /// </summary>
     public MountDialog() : this(new DriverFactory())
     {
     }
 
+    /// <summary>
+    /// Creates the dialog using the given driver factory to detect the filesystem when it shows NDFS details.
+    /// </summary>
+    /// <param name="driverFactory">
+    /// The factory used to detect the driver for an image file.
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="driverFactory"/> is null.
+    /// </exception>
     public MountDialog(DriverFactory driverFactory)
     {
         _driverFactory = driverFactory ?? throw new ArgumentNullException(nameof(driverFactory));
@@ -439,9 +458,23 @@ public partial class MountDialog : Window
 }
 
 // View model for NDFS user list
+/// <summary>
+/// One row in the NDFS user list of <see cref="MountDialog"/>.
+/// </summary>
 public class NdfsUserViewModel
 {
+    /// <summary>
+    /// Gets or sets the NDFS user name.
+    /// </summary>
     public string Name { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the display text for the pages reserved for the user, such as "Reserved: 100 pages".
+    /// </summary>
     public string Quota { get; set; } = "";
+
+    /// <summary>
+    /// Gets or sets the display text for the pages the user has used, such as "Used: 20 pages".
+    /// </summary>
     public string Used { get; set; } = "";
 }

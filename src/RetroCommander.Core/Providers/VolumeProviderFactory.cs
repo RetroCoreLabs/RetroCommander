@@ -25,6 +25,21 @@ public class VolumeProviderFactory : IVolumeProviderFactory
     private readonly ICacheManager? _cacheManager;
     private readonly IRetroCommanderLogger? _logger;
 
+    /// <summary>
+    /// Creates the factory.
+    /// </summary>
+    /// <param name="panelManager">
+    /// Optional panel manager that hands out new panel IDs. When null, each panel gets a new GUID string as its ID.
+    /// </param>
+    /// <param name="driverFactory">
+    /// Factory that detects and creates the disk image drivers.
+    /// </param>
+    /// <param name="cacheManager">
+    /// Optional cache manager. It is stored but not used by this class.
+    /// </param>
+    /// <param name="logger">
+    /// Optional logger; when null nothing is logged.
+    /// </param>
     public VolumeProviderFactory(
         PanelManager? panelManager,
         DriverFactory driverFactory,
@@ -48,6 +63,42 @@ public class VolumeProviderFactory : IVolumeProviderFactory
     public Task<IFileSystemPanel> CreatePanelAsync(string urn, CancellationToken cancellationToken = default)
         => CreatePanelAsync(urn, DefaultMountMode, cancellationToken);
 
+    /// <summary>
+    /// Opens the volume named by <paramref name="urn"/> and returns a panel for it, opening disk images as <paramref name="mode"/> asks.
+    /// </summary>
+    /// <remarks>
+    /// How the URN is handled:
+    ///  - <c>file:///</c> naming an existing file: the format is detected, and the image is mounted in a <see cref="DriverAdapterFileSystemPanel"/>.
+    ///  - <c>file:///</c> naming an existing folder: a <see cref="NativeFileSystemPanel"/> is returned.
+    ///  - Any other URN with <c>://</c>: the scheme picks the driver (<c>bsd</c>, <c>ndfs</c>, <c>d64</c>, <c>d71</c>, <c>d81</c>); an unknown scheme falls back to detection.
+    /// A fragment after <c>#</c> picks a partition: <c>a</c> to <c>h</c> for a BSD label, digits for an MBR index, or <c>raw</c>.
+    /// With no fragment, a driver that supports partitions is set to raw mode.
+    /// All work is done before the method returns.
+    /// </remarks>
+    /// <param name="urn">
+    /// The URN of the folder or disk image to open.
+    /// </param>
+    /// <param name="mode">
+    /// Whether a disk image is opened read-only, read-write, or read-write with a fall back to read-only.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Not used.
+    /// </param>
+    /// <returns>
+    /// The new panel.
+    /// </returns>
+    /// <exception cref="FileNotFoundException">
+    /// Thrown when the path or disk image does not exist.
+    /// </exception>
+    /// <exception cref="NotSupportedException">
+    /// Thrown when the URN form is not known, the format cannot be detected, or the driver for the scheme is not registered.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the partition fragment is not valid or not found.
+    /// </exception>
+    /// <exception cref="IOException">
+    /// Thrown when <see cref="MountMode.ReadWrite"/> is asked for and write access cannot be had.
+    /// </exception>
     public Task<IFileSystemPanel> CreatePanelAsync(string urn, MountMode mode, CancellationToken cancellationToken = default)
     {
         try
@@ -179,14 +230,13 @@ public class VolumeProviderFactory : IVolumeProviderFactory
     /// The stream stays open for the driver's lifetime.
     /// </summary>
     /// <remarks>
-    /// <list type="bullet">
-    /// <item><see cref="MountMode.ReadOnly"/> — always a read-only stream, even if writable.</item>
-    /// <item><see cref="MountMode.ReadWrite"/> — require write access; if it cannot be obtained the
-    /// open FAILS (throws) so the caller can tell the user plainly, instead of silently handing back
-    /// a read-only mount whose writes would be discarded.</item>
-    /// <item><see cref="MountMode.Auto"/> — try read-write first (so edits persist), fall back to
-    /// read-only on a read-only file/media or sharing conflict. Historical behaviour.</item>
-    /// </list>
+    /// The modes:
+    ///  - <see cref="MountMode.ReadOnly"/> — always a read-only stream, even if writable.
+    ///  - <see cref="MountMode.ReadWrite"/> — require write access; if it cannot be obtained the
+    ///    open FAILS (throws) so the caller can tell the user plainly, instead of silently handing
+    ///    back a read-only mount whose writes would be discarded.
+    ///  - <see cref="MountMode.Auto"/> — try read-write first (so edits persist), fall back to
+    ///    read-only on a read-only file/media or sharing conflict. Historical behaviour.
     /// </remarks>
     private static (FileStream stream, bool readOnly) OpenImageStream(string path, MountMode mode)
     {
@@ -227,6 +277,15 @@ public class VolumeProviderFactory : IVolumeProviderFactory
         }
     }
 
+    /// <summary>
+    /// Tells whether <paramref name="urn"/> starts with a scheme this factory knows, ignoring case.
+    /// </summary>
+    /// <param name="urn">
+    /// The URN to check.
+    /// </param>
+    /// <returns>
+    /// True for <c>file:///</c>, <c>ndfs://</c>, <c>d64://</c>, <c>d71://</c>, <c>d81://</c> and <c>bsd://</c>; otherwise false.
+    /// </returns>
     public bool SupportsUrn(string urn)
     {
         return urn.StartsWith("file:///", StringComparison.OrdinalIgnoreCase) ||
@@ -241,9 +300,15 @@ public class VolumeProviderFactory : IVolumeProviderFactory
     /// Gets detection confidence scores for specific filesystem types.
     /// Uses the RetroFS library's detection system.
     /// </summary>
-    /// <param name="imagePath">Path to the disk image file</param>
-    /// <param name="filesystemTypes">Array of filesystem type identifiers to check (e.g., "NDFS", "BSD-V7")</param>
-    /// <returns>Dictionary mapping filesystem type to confidence score (0.0 to 1.0)</returns>
+    /// <param name="imagePath">
+    /// Path to the disk image file
+    /// </param>
+    /// <param name="filesystemTypes">
+    /// Array of filesystem type identifiers to check (e.g., "NDFS", "BSD-V7")
+    /// </param>
+    /// <returns>
+    /// Dictionary mapping filesystem type to confidence score (0.0 to 1.0)
+    /// </returns>
     public Dictionary<string, float> GetDetectionConfidences(string imagePath, params string[] filesystemTypes)
     {
         // Use RetroFS library directly - no duplication

@@ -1,0 +1,79 @@
+# Build the DocFX API reference from src/docfx and publish it to GitHub Pages:
+#   https://retrocorelabs.github.io/RetroCommander/
+#
+# DocFX compiles RetroCommander.Core and RetroCommander.Desktop to read their XML docs, and both
+# reference RetroIO.* packages as 0.1.0-local.*, which are not on nuget.org yet. So, as in
+# build.yml, RetroCoreLabs/RetroIO is checked out and packed into a local folder feed first, and
+# the nuget.config source called `local` is pointed at it. When the packages are on nuget.org,
+# delete the three RetroIO steps.
+#
+# The build runs on Windows because that is where the RetroIO pack is proved (build.yml).
+name: docs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  RETROIO_REF: main
+
+jobs:
+  build:
+    name: Build DocFX site
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: RetroCoreLabs/RetroIO
+          ref: ${{ env.RETROIO_REF }}
+          path: retroio
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+      - name: Pack RetroIO into a feed folder
+        shell: pwsh
+        run: |
+          $stamp = Get-Date -Format 'yyyyMMddHHmmss'
+          $sln = @('retroio/src/RetroIO.slnx', 'retroio/src/RetroIO.sln') | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $sln) { throw 'no RetroIO.slnx or RetroIO.sln in the checkout' }
+          dotnet pack $sln -c Release -nodeReuse:false -o "${{ runner.temp }}/localfeed" -p:VersionSuffix="local.$stamp"
+          if ($LASTEXITCODE -ne 0) { throw 'pack failed' }
+      - name: Point the local feed at the RetroIO packages
+        shell: pwsh
+        run: dotnet nuget update source local --source "${{ runner.temp }}/localfeed" --configfile src/nuget.config
+      - name: Install DocFX
+        run: dotnet tool install -g docfx
+      - name: Build site
+        working-directory: src
+        run: docfx docfx/docfx.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/docfx/_site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

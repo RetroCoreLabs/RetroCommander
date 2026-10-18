@@ -15,6 +15,22 @@ namespace RetroCommander.Core.Transfer;
 /// </summary>
 public class StandardPropertyMapper : IPropertyMapper
 {
+    /// <summary>
+    /// Copies the standard properties from one bag to another, skipping any that are missing or hold a value of the wrong type.
+    /// </summary>
+    /// <remarks>
+    /// The keys copied, with the type each must have:
+    ///  - <see cref="StandardProperties.FileName"/> as string.
+    ///  - <see cref="StandardProperties.FileSize"/> as long.
+    ///  - <see cref="StandardProperties.IsDirectory"/>, <see cref="StandardProperties.IsReadOnly"/> and <see cref="StandardProperties.IsHidden"/> as bool.
+    ///  - <see cref="StandardProperties.CreatedDate"/>, <see cref="StandardProperties.ModifiedDate"/> and <see cref="StandardProperties.AccessedDate"/> as nullable DateTime.
+    /// </remarks>
+    /// <param name="source">
+    /// The bag to read from.
+    /// </param>
+    /// <param name="target">
+    /// The bag to write to. Values already there under the same keys are replaced.
+    /// </param>
     public void MapProperties(IPropertyBag source, IPropertyBag target)
     {
         // Copy standard properties that exist
@@ -28,6 +44,21 @@ public class StandardPropertyMapper : IPropertyMapper
         CopyIfPresent<bool>(source, target, StandardProperties.IsHidden);
     }
 
+    /// <summary>
+    /// Copies one key from <paramref name="source"/> to <paramref name="target"/> if it is there and its value is of type <typeparamref name="T"/>.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type the value must have to be copied.
+    /// </typeparam>
+    /// <param name="source">
+    /// The bag to read from.
+    /// </param>
+    /// <param name="target">
+    /// The bag to write to.
+    /// </param>
+    /// <param name="key">
+    /// The property name to copy.
+    /// </param>
     protected void CopyIfPresent<T>(IPropertyBag source, IPropertyBag target, string key)
     {
         if (source.TryGetProperty<T>(key, out var value))

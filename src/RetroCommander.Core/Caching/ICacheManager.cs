@@ -12,7 +12,16 @@ namespace RetroCommander.Core.Caching;
 /// </summary>
 public class RemoteFileMetadata
 {
+    /// <summary>
+    /// Current size of the remote file in bytes. A cached copy is used only when its stored
+    /// size matches this.
+    /// </summary>
     public long FileSizeBytes { get; set; }
+
+    /// <summary>
+    /// Current last-modified time of the remote file. A cached copy is used only when its
+    /// stored time matches this exactly.
+    /// </summary>
     public DateTime ModifiedDate { get; set; }
 }
 
@@ -21,11 +30,35 @@ public class RemoteFileMetadata
 /// </summary>
 public class CacheStatistics
 {
+    /// <summary>
+    /// Total size of all cached files in bytes.
+    /// </summary>
     public long TotalSizeBytes { get; set; }
+
+    /// <summary>
+    /// Largest size the cache may grow to, in bytes.
+    /// </summary>
     public long MaxSizeBytes { get; set; }
+
+    /// <summary>
+    /// Number of files in the cache.
+    /// </summary>
     public int EntryCount { get; set; }
+
+    /// <summary>
+    /// Number of requests served from a fresh cached copy.
+    /// </summary>
     public long HitCount { get; set; }
+
+    /// <summary>
+    /// Number of requests that had to fetch the file from the remote side.
+    /// </summary>
     public long MissCount { get; set; }
+
+    /// <summary>
+    /// <see cref="HitCount"/> divided by all requests, from 0 to 1. Returns 0 when there have
+    /// been no requests.
+    /// </summary>
     public double HitRate => (HitCount + MissCount) > 0 ? HitCount / (double)(HitCount + MissCount) : 0;
 }
 

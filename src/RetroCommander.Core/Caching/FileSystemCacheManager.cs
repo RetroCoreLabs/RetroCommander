@@ -24,6 +24,16 @@ public class FileSystemCacheManager : ICacheManager
     private long _hitCount;
     private long _missCount;
 
+    /// <summary>
+    /// Creates a cache manager that keeps its files in <see cref="CacheConfiguration.CacheDirectory"/>.
+    /// </summary>
+    /// <remarks>
+    /// Creates the cache folder if it is missing and loads cache-index.json from it. A missing or
+    /// unreadable index starts an empty cache.
+    /// </remarks>
+    /// <param name="config">
+    /// Settings that give the cache folder and the size limit.
+    /// </param>
     public FileSystemCacheManager(CacheConfiguration config)
     {
         _cacheDirectory = config.CacheDirectory;
@@ -36,6 +46,7 @@ public class FileSystemCacheManager : ICacheManager
         _index = LoadIndex();
     }
 
+    /// <inheritdoc/>
     public async Task<Stream> GetOrFetchAsync(
         string urn,
         Func<Task<Stream>> fetchFunc,
@@ -74,11 +85,13 @@ public class FileSystemCacheManager : ICacheManager
         return File.OpenRead(cachedPath);
     }
 
+    /// <inheritdoc/>
     public Task<bool> IsCachedAsync(string urn)
     {
         return Task.FromResult(GetCacheEntry(urn) != null);
     }
 
+    /// <inheritdoc/>
     public Task InvalidateAsync(string urn)
     {
         lock (_lock)
@@ -100,6 +113,7 @@ public class FileSystemCacheManager : ICacheManager
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task ClearAsync()
     {
         lock (_lock)
@@ -121,6 +135,7 @@ public class FileSystemCacheManager : ICacheManager
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task<CacheStatistics> GetStatisticsAsync()
     {
         lock (_lock)

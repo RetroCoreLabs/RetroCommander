@@ -24,9 +24,19 @@ public partial class EditFileDialog : Window
 {
     private static readonly Encoding s_roundTripEncoding = Encoding.Latin1;
 
+    /// <summary>
+    /// Gets whether the user closed the dialog with Save. False after Cancel or when the window was closed another way.
+    /// </summary>
     public bool Saved { get; private set; }
+
+    /// <summary>
+    /// Gets the edited text as Latin-1 bytes. It is set when the user clicks Save and is empty until then.
+    /// </summary>
     public byte[] EditedData { get; private set; } = Array.Empty<byte>();
 
+    /// <summary>
+    /// Creates an empty editor with the viewer font from the user settings.
+    /// </summary>
     public EditFileDialog()
     {
         InitializeComponent();
@@ -40,6 +50,15 @@ public partial class EditFileDialog : Window
         ContentEditor.FontSize = s.ViewerFontSize;
     }
 
+    /// <summary>
+    /// Creates the editor for one file and loads its bytes as Latin-1 text.
+    /// </summary>
+    /// <param name="fileName">
+    /// The file name shown in the title and the header.
+    /// </param>
+    /// <param name="data">
+    /// The file contents to edit.
+    /// </param>
     public EditFileDialog(string fileName, byte[] data) : this()
     {
         Title = $"Edit File - {fileName}";

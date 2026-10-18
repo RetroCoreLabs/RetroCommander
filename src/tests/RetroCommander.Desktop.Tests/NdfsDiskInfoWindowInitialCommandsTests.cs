@@ -35,10 +35,14 @@ namespace RetroCommander.Desktop.Tests
             "ENTER-DIR,,DI-75-1,0", "ENTER-DIR,,DI-74-1,0", "SET-AVAIL"
         };
 
-        /// <summary>Lets Avalonia deliver queued property-change/event work (the window is never shown).</summary>
+        /// <summary>
+        /// Lets Avalonia deliver queued property-change/event work (the window is never shown).
+        /// </summary>
         private static void Pump() => Dispatcher.UIThread.RunJobs();
 
-        /// <summary>Raises the Click routed event exactly as a real button press would.</summary>
+        /// <summary>
+        /// Raises the Click routed event exactly as a real button press would.
+        /// </summary>
         private static void Click(Button button)
         {
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

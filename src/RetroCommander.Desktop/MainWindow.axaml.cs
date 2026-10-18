@@ -38,6 +38,9 @@ using RetroIO.Storage.Ndfs.FileSystems;
 
 namespace RetroCommander.Desktop;
 
+/// <summary>
+/// The main RetroCommander window, with a left and a right file panel, a navigation sidebar and a toolbar.
+/// </summary>
 public partial class MainWindow : Window
 {
     private readonly PanelManager _panelManager;
@@ -78,6 +81,10 @@ public partial class MainWindow : Window
     // an already-multi-selected row would otherwise collapse the drag down to just that one row.
     private readonly List<IFileSystemEntry> _preClickSelection = new();
 
+    /// <summary>
+    /// Creates the window, sets up logging, the drivers, mounting and file operations, and hooks up the panel,
+    /// drag-and-drop, keyboard and sidebar events.
+    /// </summary>
     public MainWindow()
     {
         InitializeComponent();
@@ -1090,7 +1097,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Extracts the physical image file path from a panel's volume URN. Mounted disk images arrive
-    /// either as "file:///E:/path/img.ndfs" or as "&lt;scheme&gt;://E:/path/img.ndfs" (e.g. ndfs://),
+    /// either as "file:///E:/path/img.ndfs" or as "SCHEME://E:/path/img.ndfs" (e.g. ndfs://),
     /// so strip whatever scheme is present and normalise the separators. Returns the URN unchanged
     /// if it carries no scheme (already a plain path).
     /// </summary>
@@ -1441,7 +1448,9 @@ public partial class MainWindow : Window
         UpdateNdfsMenuVisibility();
     }
 
-    /// <summary>True when the panel is showing a mounted NDFS volume.</summary>
+    /// <summary>
+    /// True when the panel is showing a mounted NDFS volume.
+    /// </summary>
     private static bool IsNdfsPanel(IFileSystemPanel? panel)
     {
         return panel != null &&
@@ -3606,20 +3615,43 @@ File Viewer (F3):
     }
 }
 
+/// <summary>
+/// One row in a file panel's grid: either a file system entry or the "go up" row for the parent directory.
+/// </summary>
 public class FileEntryViewModel
 {
     private readonly IFileSystemEntry? _entry;
     private readonly string? _parentDirName;
 
+    /// <summary>
+    /// Creates a row for an entry, or a parent-directory row when <paramref name="parentDirName"/> is given.
+    /// </summary>
+    /// <param name="entry">
+    /// The file system entry this row shows, or null for a row with no entry.
+    /// </param>
+    /// <param name="parentDirName">
+    /// The text to show as the name of a parent-directory row, or null for a normal row.
+    /// </param>
     public FileEntryViewModel(IFileSystemEntry? entry, string? parentDirName = null)
     {
         _entry = entry;
         _parentDirName = parentDirName;
     }
 
+    /// <summary>
+    /// Gets the file system entry this row shows, or null if the row has none.
+    /// </summary>
     public IFileSystemEntry? Entry => _entry;
+
+    /// <summary>
+    /// Gets whether this row was made with a parent-directory name, which marks it as the "go up" row.
+    /// </summary>
     public bool IsParentDirectory => _parentDirName != null;
 
+    /// <summary>
+    /// Gets the name shown in the grid: the parent-directory text for the "go up" row, the name in square brackets
+    /// for a directory, the plain name for a file, or an empty string when there is no entry.
+    /// </summary>
     public string Name
     {
         get
@@ -3630,6 +3662,10 @@ public class FileEntryViewModel
         }
     }
 
+    /// <summary>
+    /// Gets the size column text: the size in bytes with thousands separators for a file, the word DIR in angle brackets
+    /// for a directory, the word UP in angle brackets for the "go up" row, or an empty string when there is no entry.
+    /// </summary>
     public string SizeFormatted
     {
         get
@@ -3640,6 +3676,9 @@ public class FileEntryViewModel
         }
     }
 
+    /// <summary>
+    /// Gets the modified date as yyyy-MM-dd HH:mm, or an empty string for the "go up" row or when there is no date.
+    /// </summary>
     public string ModifiedFormatted
     {
         get

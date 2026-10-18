@@ -27,6 +27,15 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
     private readonly CancellationTokenSource _cts;
     private bool _disposed;
 
+    /// <summary>
+    /// Creates the logger, makes sure the log folder exists, and starts the background task that writes entries to the file.
+    /// </summary>
+    /// <param name="config">
+    /// The log file path and the lowest levels for the file and for user notifications.
+    /// </param>
+    /// <param name="notificationService">
+    /// The service used to show entries to the user, or null to show nothing.
+    /// </param>
     public UnifiedLogger(LoggingConfiguration config, IUserNotificationService? notificationService = null)
     {
         _logFilePath = config.LogFilePath;
@@ -48,6 +57,11 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         _logWriter = Task.Run(() => ProcessLogQueueAsync(_cts.Token));
     }
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The entry is queued for the log file if <paramref name="level"/> is at or above the file level,
+    /// and shown to the user on a background task if it is at or above the notification level.
+    /// </remarks>
     public void Log(LogLevel level, string message, Exception? ex = null)
     {
         var entry = new LogEntry
@@ -73,13 +87,25 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public void LogTrace(string message) => Log(LogLevel.Trace, message);
+
+    /// <inheritdoc/>
     public void LogDebug(string message) => Log(LogLevel.Debug, message);
+
+    /// <inheritdoc/>
     public void LogInfo(string message) => Log(LogLevel.Info, message);
+
+    /// <inheritdoc/>
     public void LogWarning(string message, Exception? ex = null) => Log(LogLevel.Warning, message, ex);
+
+    /// <inheritdoc/>
     public void LogError(string message, Exception? ex = null) => Log(LogLevel.Error, message, ex);
+
+    /// <inheritdoc/>
     public void LogCritical(string message, Exception? ex = null) => Log(LogLevel.Critical, message, ex);
 
+    /// <inheritdoc/>
     public void LogOperation(string operation, string details, LogLevel level = LogLevel.Info)
     {
         var entry = new LogEntry
@@ -103,6 +129,10 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         }
     }
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The message text is the operation name, a colon, and the file path.
+    /// </remarks>
     public void LogFileOperation(string operation, string filePath, LogLevel level = LogLevel.Info)
     {
         var entry = new LogEntry
@@ -127,6 +157,11 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         }
     }
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// A transfer that worked is logged at <see cref="LogLevel.Info"/>, a failed one at <see cref="LogLevel.Error"/>.
+    /// Only a failed transfer is shown to the user, and only when the notification level allows it. The paths, byte count and result are also stored in the entry's context.
+    /// </remarks>
     public void LogTransfer(string source, string destination, long bytesTransferred, bool success)
     {
         var level = success ? LogLevel.Info : LogLevel.Error;
@@ -301,6 +336,12 @@ public class UnifiedLogger : IRetroCommanderLogger, IDisposable
         }
     }
 
+    /// <summary>
+    /// Stops the background writer, waits up to five seconds for it to finish, and frees the queue.
+    /// </summary>
+    /// <remarks>
+    /// Entries still waiting in the queue when the writer stops are not written.
+    /// </remarks>
     public void Dispose()
     {
         if (_disposed)

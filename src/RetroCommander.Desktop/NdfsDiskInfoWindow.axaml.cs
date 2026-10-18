@@ -37,15 +37,26 @@ public partial class NdfsDiskInfoWindow : Window
     private readonly bool _isReadOnly;
 
     // Parameterless ctor for the XAML designer only.
+    /// <summary>
+    /// Creates an empty window with no filesystem attached. Meant for the XAML designer only.
+    /// </summary>
     public NdfsDiskInfoWindow()
     {
         InitializeComponent();
     }
 
-    /// <param name="ndfs">The live mounted NDFS filesystem (same mount the panel holds open).</param>
-    /// <param name="metadataService">Builds metadata from the filesystem; called directly whenever the view refreshes.</param>
-    /// <param name="imagePath">Full path to the physical image backing the mount.</param>
-    /// <param name="isReadOnly">True if the mount is read-only (write actions will be blocked).</param>
+    /// <param name="ndfs">
+    /// The live mounted NDFS filesystem (same mount the panel holds open).
+    /// </param>
+    /// <param name="metadataService">
+    /// Builds metadata from the filesystem; called directly whenever the view refreshes.
+    /// </param>
+    /// <param name="imagePath">
+    /// Full path to the physical image backing the mount.
+    /// </param>
+    /// <param name="isReadOnly">
+    /// True if the mount is read-only (write actions will be blocked).
+    /// </param>
     public NdfsDiskInfoWindow(
         INdfsFileSystem ndfs,
         FileSystemMetadataService metadataService,
@@ -382,7 +393,9 @@ public partial class NdfsDiskInfoWindow : Window
             : string.Empty;
     }
 
-    /// <summary>Hides the editor and shows the "no buffer" message with <paramref name="message"/>.</summary>
+    /// <summary>
+    /// Hides the editor and shows the "no buffer" message with <paramref name="message"/>.
+    /// </summary>
     private void ShowInitCmdUnavailable(string message)
     {
         InitCmdEditor.IsVisible = false;
