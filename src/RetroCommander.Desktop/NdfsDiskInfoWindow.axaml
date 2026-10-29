@@ -220,6 +220,81 @@
                 </Grid>
             </TabItem>
 
+            <!-- ===== CPU Identity tab (SINTRAN CPU number and type on the pack) ===== -->
+            <TabItem Header="CPU Identity">
+                <ScrollViewer Padding="14">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="🔢 SINTRAN CPU number and type" Classes="SectionHeader" Margin="0,0,0,3"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource FluentTextSecondaryBrush}"
+                               Text="A SINTRAN pack carries its CPU number twice (SYSNO, FCPUN) and its CPU type once (HWINF+2) in the resident data page, stored on disk as the segments S3IDPIT (warm start) and S3SDPIT (cold start). Two nodes with the same number break COSMOS routing, and a pack last entered by another system is refused at ENTER-DIRECTORY (error 3203). The addresses come from this pack's own symbol lists and the segment numbers from its RT-loader name records."/>
+                    <TextBlock Name="CpuIdInfoText" TextWrapping="Wrap" Margin="0,3,0,0"
+                               Foreground="{DynamicResource FluentTextSecondaryBrush}" FontSize="11"/>
+
+                    <!-- Message shown when the pack has no readable identity -->
+                    <Border Name="CpuIdUnavailablePanel" IsVisible="False"
+                            Background="{DynamicResource FluentWarningBackgroundBrush}"
+                            BorderBrush="{DynamicResource FluentWarningBorderBrush}"
+                            BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,8,0,0">
+                        <TextBlock Name="CpuIdUnavailableText" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                    </Border>
+
+                    <StackPanel Name="CpuIdPanel" Spacing="3">
+                        <!-- The two disk copies -->
+                        <TextBlock Text="On the pack" Classes="SectionHeader"/>
+                        <Grid ColumnDefinitions="200,160,160" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Image copy (S3IDPIT)" Classes="UserHeader"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Save copy (S3SDPIT)" Classes="UserHeader"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="CPU number (SYSNO):" Classes="Label"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Name="CpuIdImageSysnoText" Classes="Value"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Name="CpuIdSaveSysnoText" Classes="Value"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="FCPUN copy:" Classes="Label"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Name="CpuIdImageFcpunText" Classes="Value"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Name="CpuIdSaveFcpunText" Classes="Value"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="CPU type (HWINF+2):" Classes="Label"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Name="CpuIdImageTypeText" Classes="Value"/>
+                            <TextBlock Grid.Row="3" Grid.Column="2" Name="CpuIdSaveTypeText" Classes="Value"/>
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Patch level (REVLE):" Classes="Label"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Name="CpuIdImageRevleText" Classes="Value"/>
+                            <TextBlock Grid.Row="4" Grid.Column="2" Name="CpuIdSaveRevleText" Classes="Value"/>
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Where:" Classes="Label"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Name="CpuIdImageWhereText" Classes="Value" FontSize="11" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Row="5" Grid.Column="2" Name="CpuIdSaveWhereText" Classes="Value" FontSize="11" TextWrapping="Wrap"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="33CPN / 33CPU (generation):" Classes="Label"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Name="CpuIdSymbolsText" Classes="Value"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Directory stamp:" Classes="Label"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Name="CpuIdStampText" Classes="Value"/>
+                        </Grid>
+                        <TextBlock Name="CpuIdNoteText" TextWrapping="Wrap" IsVisible="False" Margin="20,4,0,0"
+                                   Foreground="{DynamicResource FluentTextSecondaryBrush}" FontSize="11"/>
+
+                        <!-- Change -->
+                        <TextBlock Text="Change" Classes="SectionHeader"/>
+                        <Grid ColumnDefinitions="200,160,*" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="New CPU number (decimal):" Classes="Label" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Name="CpuIdNumberBox" Watermark="0..65535" Margin="5,1,0,1"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="New CPU type (decimal):" Classes="Label" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Name="CpuIdTypeBox" Watermark="blank = keep" Margin="5,1,0,1"/>
+                            <CheckBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="CpuIdKeepStampBox" Margin="5,2,0,0"
+                                      Content="Keep the 'entered by system N' stamp (default clears it)"/>
+                        </Grid>
+                        <TextBlock TextWrapping="Wrap" Classes="Label"
+                                   Text="Writes both disk copies, rewrites 33CPN / 33CPU in SYMBOL-2-LIST and clears the stamp, then reads everything back. Nothing is written unless every word is reachable. The new number shows on the next SINTRAN start."/>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0" HorizontalAlignment="Right">
+                            <Button Name="CpuIdReloadButton" Content="↺ Reload" Click="OnCpuIdReloadClick" Classes="dialog-secondary"/>
+                            <Button Name="CpuIdApplyButton" Content="💾 Apply to Disk" Click="OnCpuIdApplyClick" Classes="dialog-primary"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Status line -->
+                    <TextBlock Name="CpuIdStatusText" Margin="0,6,0,0"
+                               Foreground="{DynamicResource FluentTextSecondaryBrush}" TextWrapping="Wrap"/>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
         </TabControl>
 
         <!-- Actions -->

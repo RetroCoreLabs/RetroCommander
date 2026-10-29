@@ -71,6 +71,7 @@ public partial class NdfsDiskInfoWindow : Window
 
         Populate(BuildMetadata());
         LoadInitialCommands();
+        LoadCpuIdentity();
     }
 
     // Shared read-only tooltip/notice text for the initial-command editor.
@@ -461,6 +462,203 @@ public partial class NdfsDiskInfoWindow : Window
         catch (Exception ex)
         {
             InitCmdStatusText.Text = $"Save failed: {ex.Message}";
+        }
+    }
+
+    // ==================== CPU identity tab ====================
+
+    private const string CPUID_READ_ONLY_TIP =
+        "Disabled: this volume is mounted read-only. Re-mount it read-write "
+        + "(right-click the image → \"Open Read/Write\") to change the CPU number or type.";
+
+    private static string Dec(int v) => v < 0 ? "-" : v.ToString();
+    private static string Oct(int v) => v < 0 ? "-" : Convert.ToString(v, 8) + "₈";
+
+    private static string Where(SintranDpitCopy c)
+    {
+        if (!c.Present)
+            return $"segment {Oct(c.SegmentNumber)} not usable";
+        string file = c.FilePath.Length == 0 ? "(no file)" : c.FilePath;
+        return $"segment {Oct(c.SegmentNumber)}, segment file {c.SegmentFile}, {file}, page {c.Madr}, {c.Segle} pages"
+             + (c.FileFound ? string.Empty : " - file not found");
+    }
+
+    /// <summary>
+    /// Reads the CPU number and type from the live mount into the tab. A pack without the pieces the
+    /// reader needs (not a SINTRAN system pack, no FCPUN symbol, no name records) shows the
+    /// "unavailable" panel with the reason; the change form is disabled on a read-only mount and on a
+    /// pack where a copy is not reachable.
+    /// </summary>
+    private void LoadCpuIdentity()
+    {
+        if (_ndfs == null)
+        {
+            ShowCpuIdUnavailable("Filesystem not available.");
+            return;
+        }
+
+        SintranCpuIdentityInfo id;
+        try
+        {
+            id = _ndfs.ReadSintranCpuIdentity();
+        }
+        catch (SintranCpuIdentityException ex)
+        {
+            ShowCpuIdUnavailable("No SINTRAN CPU identity on this pack: " + ex.Message);
+            return;
+        }
+        catch (Exception ex)
+        {
+            ShowCpuIdUnavailable($"Could not read the CPU identity: {ex.Message}");
+            return;
+        }
+
+        CpuIdUnavailablePanel.IsVisible = false;
+        CpuIdPanel.IsVisible = true;
+
+        SintranDpitCopy image = id.Copies[0];
+        SintranDpitCopy save = id.Copies[1];
+        CpuIdImageSysnoText.Text = Dec(image.Sysno);
+        CpuIdSaveSysnoText.Text = Dec(save.Sysno);
+        CpuIdImageFcpunText.Text = Dec(image.Fcpun);
+        CpuIdSaveFcpunText.Text = Dec(save.Fcpun);
+        CpuIdImageTypeText.Text = Dec(image.CpuType);
+        CpuIdSaveTypeText.Text = Dec(save.CpuType);
+        CpuIdImageRevleText.Text = Oct(image.Revle);
+        CpuIdSaveRevleText.Text = Oct(save.Revle);
+        CpuIdImageWhereText.Text = Where(image);
+        CpuIdSaveWhereText.Text = Where(save);
+        CpuIdSymbolsText.Text = $"{Dec(id.Symbols.Cpn33)} / {Dec(id.Symbols.Cpu33)}";
+        CpuIdStampText.Text = !id.DirectoryExtValid
+            ? "extended info block not valid"
+            : id.DirectoryEntered
+                ? $"entered by system {id.DirectorySystemNumber}"
+                : $"not entered (system number {id.DirectorySystemNumber})";
+
+        bool differ = (image.Sysno >= 0 && image.Fcpun >= 0 && image.Sysno != image.Fcpun)
+                   || (save.Sysno >= 0 && save.Fcpun >= 0 && save.Sysno != save.Fcpun);
+        CpuIdNoteText.IsVisible = differ;
+        CpuIdNoteText.Text = differ
+            ? "SYSNO and FCPUN differ. SINTRAN L and later overwrite SYSNO from the PROM at every start; the banner shows SYSNO."
+            : string.Empty;
+
+        CpuIdInfoText.Text =
+            $"SINTRAN {id.Version} · symbols from {id.Symbol1Path} and {id.Symbol2Path} "
+            + $"(SYSNO {Oct(id.Symbols.Sysno)}, FCPUN {Oct(id.Symbols.Fcpun)}) · segment names from {id.NamesPath} · "
+            + $"segment table at SEGFIL0 page {id.SegmentTablePage}.";
+
+        // Form: the current number as the starting value, the current type as a hint.
+        CpuIdNumberBox.Text = image.Sysno >= 0 ? image.Sysno.ToString() : string.Empty;
+        CpuIdTypeBox.Text = image.CpuType >= 0 ? image.CpuType.ToString() : string.Empty;
+        CpuIdKeepStampBox.IsChecked = false;
+
+        bool writable = !_isReadOnly;
+        for (int i = 0; i < id.Copies.Count; i++)
+        {
+            SintranDpitCopy c = id.Copies[i];
+            if (!c.Present || !c.FileFound || c.SysnoOffset < 0 || c.FcpunOffset < 0) writable = false;
+        }
+        CpuIdNumberBox.IsEnabled = writable;
+        CpuIdTypeBox.IsEnabled = writable;
+        CpuIdKeepStampBox.IsEnabled = writable;
+        CpuIdApplyButton.IsEnabled = writable;
+        ToolTip.SetTip(CpuIdApplyButton, _isReadOnly
+            ? CPUID_READ_ONLY_TIP
+            : writable
+                ? "Write the CPU number (and type) into both disk copies, the symbols and the stamp, then read them back."
+                : "Disabled: a copy of the resident data page is not reachable on this pack.");
+
+        CpuIdStatusText.Text = _isReadOnly
+            ? "Read-only mount — changing disabled. Re-mount read-write to change the CPU number."
+            : writable ? string.Empty : "A disk copy is not reachable; this pack cannot be changed here.";
+    }
+
+    private void ShowCpuIdUnavailable(string message)
+    {
+        CpuIdPanel.IsVisible = false;
+        CpuIdUnavailablePanel.IsVisible = true;
+        CpuIdUnavailableText.Text = message;
+        CpuIdInfoText.Text = string.Empty;
+        CpuIdApplyButton.IsEnabled = false;
+        CpuIdStatusText.Text = string.Empty;
+    }
+
+    private void OnCpuIdReloadClick(object? sender, RoutedEventArgs e)
+    {
+        LoadCpuIdentity();
+        if (CpuIdPanel.IsVisible && !_isReadOnly)
+            CpuIdStatusText.Text = "Reloaded from disk.";
+    }
+
+    private static bool ParseWord(string? text, bool allowBlank, out int? value, out string error)
+    {
+        value = null;
+        error = string.Empty;
+        string s = (text ?? string.Empty).Trim();
+        if (s.Length == 0)
+        {
+            if (allowBlank) return true;
+            error = "Enter a CPU number.";
+            return false;
+        }
+        if (!int.TryParse(s, out int v) || v < 0 || v > 65535)
+        {
+            error = $"\"{s}\" is not a decimal number in 0..65535.";
+            return false;
+        }
+        value = v;
+        return true;
+    }
+
+    private void OnCpuIdApplyClick(object? sender, RoutedEventArgs e)
+    {
+        if (_ndfs == null)
+            return;
+
+        if (_isReadOnly)
+        {
+            CpuIdStatusText.Text = "Cannot change: volume is mounted read-only. Re-mount read-write.";
+            return;
+        }
+
+        if (!ParseWord(CpuIdNumberBox.Text, allowBlank: false, out int? number, out string err) || number == null)
+        {
+            CpuIdStatusText.Text = err;
+            return;
+        }
+        if (!ParseWord(CpuIdTypeBox.Text, allowBlank: true, out int? type, out err))
+        {
+            CpuIdStatusText.Text = err;
+            return;
+        }
+        bool keepStamp = CpuIdKeepStampBox.IsChecked == true;
+
+        try
+        {
+            SintranCpuIdentityInfo after = _ndfs.WriteSintranCpuIdentity(number.Value, type, keepStamp);
+            LoadCpuIdentity();
+            CpuIdStatusText.Text =
+                $"✓ CPU number {after.Copies[0].Sysno}"
+                + (type.HasValue ? $", CPU type {after.Copies[0].CpuType}" : ", type kept")
+                + (keepStamp ? ", stamp kept" : ", directory stamp cleared")
+                + " — written to both copies and read back.";
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            CpuIdStatusText.Text = $"Invalid value: {ex.Message}";
+        }
+        catch (SintranCpuIdentityException ex)
+        {
+            // A target word is not reachable: nothing was written.
+            CpuIdStatusText.Text = $"Cannot change: {ex.Message} Nothing was written.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            CpuIdStatusText.Text = $"Cannot change: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            CpuIdStatusText.Text = $"Change failed: {ex.Message}";
         }
     }
 
