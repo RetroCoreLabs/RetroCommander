@@ -1083,8 +1083,23 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialog = new PropertiesDialog(panel.SelectedEntry);
+        // On a mounted NDFS volume the dialog also shows and sets the file's access, through the
+        // live NDFS driver behind the panel adapter (same pattern as the user-info window).
+        INdfsFileSystem? ndfs = null;
+        if (string.Equals(panel.FileSystemType, "NDFS", StringComparison.OrdinalIgnoreCase)
+            && panel is DriverAdapterFileSystemPanel adapter
+            && adapter.Driver is NdfsDriver ndfsDriver)
+        {
+            ndfs = ndfsDriver.GetFileSystem();
+        }
+
+        PropertiesDialog dialog = ndfs != null
+            ? new PropertiesDialog(panel.SelectedEntry, ndfs, panel.IsReadOnly)
+            : new PropertiesDialog(panel.SelectedEntry);
         await dialog.ShowDialog(this);
+
+        if (dialog.AccessChanged)
+            await panel.RefreshAsync();
     }
 
     /// <summary>

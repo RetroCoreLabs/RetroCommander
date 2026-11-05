@@ -11,12 +11,15 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using RetroIO.Storage.Ndfs.Elements;
 using RetroIO.Storage.Ndfs.FileSystems;
+using RetroIO.Storage.Ndfs.Security;
 
 namespace RetroCommander.Desktop;
 
 /// <summary>
 /// F3-view window for a top-level NDFS entry — i.e. a USER (at the NDFS root, directories are users).
-/// Shows the user's identity, quota, dates, friends and password, and offers a password reset. The
+/// Shows the user's identity, quota, dates, friends and password, and offers a password reset,
+/// a default-file-access change and friend add / change / delete (the SINTRAN commands
+/// @SET-DEFAULT-FILE-ACCESS, @CREATE-FRIEND, @SET-FRIEND-ACCESS, @DELETE-FRIEND). The
 /// password is shown BOTH as decimal and as a 6-digit ND-style octal value with a trailing 'B'
 /// (e.g. 12345 = 030071B). Reset clears the password to 0 (no password) via the live filesystem;
 /// it requires a read-write mount. Mirrors the RetroCore RetroCommander NDUserViewWnd.
@@ -46,6 +49,12 @@ public partial class NdfsUserInfoWindow : Window
         /// Gets the friend's access rights as text, as the NDFS friend entry formats them.
         /// </summary>
         public string Permissions { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets the same rights in SINTRAN's written form (<c>RWA</c>, or <c>N</c> for none), the
+        /// form the rights box takes.
+        /// </summary>
+        public string Rights { get; init; } = string.Empty;
     }
 
     // Parameterless ctor for the XAML designer only.
@@ -147,11 +156,21 @@ public partial class NdfsUserInfoWindow : Window
         PasswordOctText.Text = FormatOctalWord(pw);
         PasswordStateText.Text = pw == 0 ? "No password (0)" : "Password set";
 
-        // Default access
+        // Default access, in SINTRAN's own written form first (public,friend,own), then the raw word.
+        DefaultAccessSintranText.Text = SintranAccessForm.FormatAccessTriple(user.DefaultFileAccess);
         DefaultAccessText.Text = $"0x{user.DefaultFileAccess:X4} ({FormatOctalWord(user.DefaultFileAccess)})";
 
         // Friends
         PopulateFriends(user);
+
+        // Every change below writes the pack, so none of it is offered on a read-only mount.
+        DefaultAccessBox.IsEnabled = !_isReadOnly;
+        SetDefaultAccessButton.IsEnabled = !_isReadOnly;
+        FriendNameBox.IsEnabled = !_isReadOnly;
+        FriendRightsBox.IsEnabled = !_isReadOnly;
+        AddFriendButton.IsEnabled = !_isReadOnly;
+        SetFriendButton.IsEnabled = !_isReadOnly;
+        DeleteFriendButton.IsEnabled = !_isReadOnly;
 
         // Reset availability (read-only mounts cannot write).
         ReadOnlyNotice.IsVisible = _isReadOnly;
@@ -177,6 +196,8 @@ public partial class NdfsUserInfoWindow : Window
                     Index = f.FriendUserIndex,
                     Name = ResolveUserName(f.FriendUserIndex),
                     Permissions = f.GetPermissionString(),
+                    // The friend word keeps its rights in bits 8-12.
+                    Rights = SintranAccessForm.FormatAccessRights(f.Bits >> 8),
                 });
             }
         }
@@ -245,6 +266,138 @@ public partial class NdfsUserInfoWindow : Window
         {
             StatusText.Text = $"Reset failed: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Fills the friend boxes from the selected row, so Change rights and Delete act on it.
+    /// </summary>
+    private void OnFriendSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (FriendsList.SelectedItem is not FriendRow row)
+            return;
+
+        FriendNameBox.Text = string.IsNullOrEmpty(row.Name) || row.Name.StartsWith('#')
+            ? row.Index.ToString()
+            : row.Name;
+        FriendRightsBox.Text = row.Rights;
+    }
+
+    /// <summary>
+    /// Sets the user's default file access from the PUBLIC,FRIEND,OWN box
+    /// (SINTRAN <c>@SET-DEFAULT-FILE-ACCESS</c>).
+    /// </summary>
+    private void OnSetDefaultAccessClick(object? sender, RoutedEventArgs e)
+    {
+        RunChange(user =>
+        {
+            ushort before = user.DefaultFileAccess;
+            ushort after = SintranAccessForm.ApplyAccessTriple(before, DefaultAccessBox.Text ?? string.Empty);
+            if (after == before)
+                return "No change: the default access is already " + SintranAccessForm.FormatAccessTriple(before) + ".";
+
+            _ndfs!.SetDefaultFileAccess(user.UserName, after);
+            DefaultAccessBox.Text = string.Empty;
+            return $"✓ Default access {SintranAccessForm.FormatAccessTriple(before)} -> {SintranAccessForm.FormatAccessTriple(after)}.";
+        });
+    }
+
+    /// <summary>
+    /// Adds the friend in the name box (SINTRAN <c>@CREATE-FRIEND</c>), with RWA when no rights
+    /// are typed.
+    /// </summary>
+    private void OnAddFriendClick(object? sender, RoutedEventArgs e)
+    {
+        RunChange(user =>
+        {
+            string friend = RequireFriendName();
+            string rights = string.IsNullOrWhiteSpace(FriendRightsBox.Text) ? "RWA" : FriendRightsBox.Text.Trim();
+            _ndfs!.AddFriend(user.UserName, friend, rights);
+            return $"✓ Added friend {friend} with {rights}.";
+        });
+    }
+
+    /// <summary>
+    /// Changes the rights of the friend in the name box (SINTRAN <c>@SET-FRIEND-ACCESS</c>).
+    /// </summary>
+    private void OnSetFriendClick(object? sender, RoutedEventArgs e)
+    {
+        RunChange(user =>
+        {
+            string friend = RequireFriendName();
+            string rights = (FriendRightsBox.Text ?? string.Empty).Trim();
+            if (rights.Length == 0)
+                return "No change: type the new rights, e.g. RW, or N for none.";
+
+            _ndfs!.SetFriendAccess(user.UserName, friend, rights);
+            return $"✓ Friend {friend} now has {rights.ToUpperInvariant()}.";
+        });
+    }
+
+    /// <summary>
+    /// Removes the friend in the name box (SINTRAN <c>@DELETE-FRIEND</c>).
+    /// </summary>
+    private void OnDeleteFriendClick(object? sender, RoutedEventArgs e)
+    {
+        RunChange(user =>
+        {
+            string friend = RequireFriendName();
+            _ndfs!.RemoveFriend(user.UserName, friend);
+            FriendNameBox.Text = string.Empty;
+            FriendRightsBox.Text = string.Empty;
+            return $"✓ Deleted friend {friend}.";
+        });
+    }
+
+    /// <summary>
+    /// The friend name box, trimmed; refuses an empty box.
+    /// </summary>
+    private string RequireFriendName()
+    {
+        string name = (FriendNameBox.Text ?? string.Empty).Trim();
+        if (name.Length == 0)
+            throw new ArgumentException("Type the friend's user name or number first.");
+        return name;
+    }
+
+    /// <summary>
+    /// Runs one change on the pack, then shows the user again and the outcome in the status line.
+    /// The library writes each change to the device as it is made and refuses bad input before
+    /// changing anything, so an error here leaves the pack as it was.
+    /// </summary>
+    /// <param name="change">
+    /// The change; returns the status text.
+    /// </param>
+    private void RunChange(Func<UserEntry, string> change)
+    {
+        if (_ndfs == null)
+            return;
+
+        if (_isReadOnly)
+        {
+            StatusText.Text = "Cannot change: volume is mounted read-only. Re-mount read-write.";
+            return;
+        }
+
+        UserEntry? user = FindUser();
+        if (user == null)
+        {
+            StatusText.Text = "User not found.";
+            return;
+        }
+
+        string status;
+        try
+        {
+            status = change(user);
+        }
+        catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is System.IO.IOException)
+        {
+            StatusText.Text = $"Not changed: {ex.Message}";
+            return;
+        }
+
+        Populate();
+        StatusText.Text = status;
     }
 
     private void OnCloseClick(object? sender, RoutedEventArgs e)

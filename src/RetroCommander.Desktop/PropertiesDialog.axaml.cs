@@ -6,10 +6,13 @@
 //
 
 using System;
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using RetroCommander.Core.Abstractions;
 using RetroIO.Storage.Ndfs.Elements;
+using RetroIO.Storage.Ndfs.FileSystems;
+using RetroIO.Storage.Ndfs.Security;
 
 namespace RetroCommander.Desktop
 {
@@ -54,6 +57,100 @@ namespace RetroCommander.Desktop
 
             PopulateStandardFields(entry);
             PopulateFilesystemDetails(entry);
+        }
+
+        /// <summary>
+        /// Creates the dialog for a file on a mounted NDFS volume, with the File Access section that
+        /// shows and sets its access (SINTRAN <c>@SET-FILE-ACCESS</c>).
+        /// </summary>
+        /// <param name="entry">
+        /// The file or directory to show. The access section appears for a file only.
+        /// </param>
+        /// <param name="ndfs">
+        /// The live NDFS file system the entry belongs to.
+        /// </param>
+        /// <param name="isReadOnly">
+        /// True if the volume is mounted read-only; the access is then shown but cannot be set.
+        /// </param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown when <paramref name="entry"/> or <paramref name="ndfs"/> is null.
+        /// </exception>
+        public PropertiesDialog(IFileSystemEntry entry, INdfsFileSystem ndfs, bool isReadOnly) : this(entry)
+        {
+            _ndfs = ndfs ?? throw new ArgumentNullException(nameof(ndfs));
+            _ndfsPath = entry.FullPath;
+            _isReadOnly = isReadOnly;
+
+            if (entry.IsDirectory)
+                return;
+
+            NdfsAccessBorder.IsVisible = true;
+            FileAccessBox.IsEnabled = !isReadOnly;
+            SetFileAccessButton.IsEnabled = !isReadOnly;
+            if (isReadOnly)
+                FileAccessStatusText.Text = "This volume is mounted read-only. Re-mount read-write to change the access.";
+            ShowFileAccess();
+        }
+
+        /// <summary>
+        /// Gets whether the file's access was changed while the dialog was open, so the caller
+        /// knows to refresh its listing.
+        /// </summary>
+        public bool AccessChanged { get; private set; }
+
+        private readonly INdfsFileSystem? _ndfs;
+        private readonly string _ndfsPath = string.Empty;
+        private readonly bool _isReadOnly;
+
+        /// <summary>
+        /// Reads the file's access from the live file system and shows it.
+        /// </summary>
+        private void ShowFileAccess()
+        {
+            try
+            {
+                ushort bits = _ndfs!.GetFileAccess(_ndfsPath);
+                FileAccessSintranText.Text = SintranAccessForm.FormatAccessTriple(bits);
+                FileAccessBitsText.Text = $"0x{bits:X4} ({Convert.ToString(bits, 8).PadLeft(6, '0')}B)";
+            }
+            catch (Exception ex) when (ex is FileNotFoundException || ex is InvalidOperationException)
+            {
+                FileAccessSintranText.Text = "(unknown)";
+                FileAccessBitsText.Text = string.Empty;
+                FileAccessStatusText.Text = $"Cannot read the access: {ex.Message}";
+                FileAccessBox.IsEnabled = false;
+                SetFileAccessButton.IsEnabled = false;
+            }
+        }
+
+        /// <summary>
+        /// Applies the PUBLIC,FRIEND,OWN box to the file's access and writes it.
+        /// </summary>
+        private void OnSetFileAccessClick(object? sender, RoutedEventArgs e)
+        {
+            if (_ndfs == null || _isReadOnly)
+                return;
+
+            try
+            {
+                ushort before = _ndfs.GetFileAccess(_ndfsPath);
+                ushort after = SintranAccessForm.ApplyAccessTriple(before, FileAccessBox.Text ?? string.Empty);
+                if (after == before)
+                {
+                    FileAccessStatusText.Text = "No change: the access is already " + SintranAccessForm.FormatAccessTriple(before) + ".";
+                    return;
+                }
+
+                _ndfs.SetFileAccess(_ndfsPath, after);
+                AccessChanged = true;
+                FileAccessBox.Text = string.Empty;
+                ShowFileAccess();
+                FileAccessStatusText.Text = $"✓ Access {SintranAccessForm.FormatAccessTriple(before)} -> {SintranAccessForm.FormatAccessTriple(after)}.";
+            }
+            catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException || ex is IOException)
+            {
+                FileAccessStatusText.Text = $"Not changed: {ex.Message}";
+            }
         }
 
         private void PopulateStandardFields(IFileSystemEntry entry)

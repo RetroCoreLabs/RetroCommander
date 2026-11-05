@@ -35,6 +35,33 @@
                     </StackPanel>
                 </Border>
 
+                <!-- NDFS file access (SINTRAN @SET-FILE-ACCESS file,public,friend,own). Shown only
+                     for a file on a mounted NDFS volume. -->
+                <Border Name="NdfsAccessBorder" Classes="panel-border" Padding="16" IsVisible="False">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="File Access" Classes="fluent-text-header"/>
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="12">
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Public, Friend, Own:" Classes="fluent-text-secondary"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Name="FileAccessSintranText" Classes="fluent-text"
+                                       FontFamily="Consolas,Menlo,monospace"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Access Bits:" Classes="fluent-text-secondary"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Name="FileAccessBitsText" Classes="fluent-text"
+                                       FontFamily="Consolas,Menlo,monospace"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="New value:" Classes="fluent-text-secondary"
+                                       VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                                <TextBox Name="FileAccessBox" Width="170" FontFamily="Consolas,Menlo,monospace"
+                                         Watermark="R,RWA,RWACD"/>
+                                <Button Name="SetFileAccessButton" Content="Set" Click="OnSetFileAccessClick"
+                                        Classes="dialog-secondary"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="fluent-text-secondary" TextWrapping="Wrap"
+                                   Text="As SINTRAN's @SET-FILE-ACCESS: public,friend,own. Letters R W A C D, or N for none; an empty field keeps that part. The list above shows the access from when this dialog opened."/>
+                        <TextBlock Name="FileAccessStatusText" Classes="fluent-text-secondary" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 

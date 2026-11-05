@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="520" d:DesignHeight="560"
         x:Class="RetroCommander.Desktop.NdfsUserInfoWindow"
         Title="NDFS User Information"
-        Width="520" Height="560"
+        Width="560" Height="680"
         MinWidth="440" MinHeight="440"
         WindowStartupLocation="CenterOwner"
         CanResize="True"
@@ -85,18 +85,32 @@
                     <TextBlock Grid.Row="2" Grid.Column="1" Name="PasswordStateText" Classes="Value"/>
                 </Grid>
 
-                <!-- Default access -->
+                <!-- Default access: the access a file gets when this user creates it
+                     (SINTRAN @SET-DEFAULT-FILE-ACCESS public,friend,own). -->
                 <TextBlock Text="🛡️ Default File Access" Classes="SectionHeader"/>
-                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Default Access Bits:" Classes="Label"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DefaultAccessText" Classes="Value"
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Public, Friend, Own:" Classes="Label"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Name="DefaultAccessSintranText" Classes="Value"
                                FontFamily="Consolas,Menlo,monospace"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Default Access Bits:" Classes="Label"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Name="DefaultAccessText" Classes="Value"
+                               FontFamily="Consolas,Menlo,monospace"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="New value:" Classes="Label"
+                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="5,2,0,2">
+                        <TextBox Name="DefaultAccessBox" Width="170" FontFamily="Consolas,Menlo,monospace"
+                                 Watermark="R,RWA,RWACD"/>
+                        <Button Name="SetDefaultAccessButton" Content="Set" Click="OnSetDefaultAccessClick"
+                                Classes="dialog-secondary"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Classes="Label" TextWrapping="Wrap"
+                               Text="As SINTRAN's @SET-DEFAULT-FILE-ACCESS: public,friend,own. Letters R W A C D, or N for none; an empty field keeps that part. Files that already exist keep their own access."/>
                 </Grid>
 
-                <!-- Friends -->
+                <!-- Friends (SINTRAN @LIST-FRIENDS, @CREATE-FRIEND, @SET-FRIEND-ACCESS, @DELETE-FRIEND) -->
                 <TextBlock Text="🤝 Friends" Classes="SectionHeader"/>
-                <ItemsControl Name="FriendsList" Margin="20,0,0,0">
-                    <ItemsControl.ItemTemplate>
+                <ListBox Name="FriendsList" Margin="20,0,0,0" SelectionChanged="OnFriendSelectionChanged">
+                    <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Grid ColumnDefinitions="60,180,*" Margin="0,1">
                                 <TextBlock Grid.Column="0" Text="{Binding Index}"
@@ -108,9 +122,26 @@
                                            Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
                             </Grid>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ListBox.ItemTemplate>
+                </ListBox>
                 <TextBlock Name="NoFriendsText" Text="No friends defined." Classes="Label" IsVisible="False"/>
+                <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Friend (name or number):" Classes="Label"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" Name="FriendNameBox" Width="170" Margin="5,2,0,2"
+                             HorizontalAlignment="Left"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Rights:" Classes="Label"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" Name="FriendRightsBox" Width="170" Margin="5,2,0,2"
+                             HorizontalAlignment="Left" FontFamily="Consolas,Menlo,monospace" Watermark="RWA"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="5,4,0,2">
+                        <Button Name="AddFriendButton" Content="Add" Click="OnAddFriendClick" Classes="dialog-secondary"/>
+                        <Button Name="SetFriendButton" Content="Change rights" Click="OnSetFriendClick" Classes="dialog-secondary"/>
+                        <Button Name="DeleteFriendButton" Content="Delete" Click="OnDeleteFriendClick" Classes="dialog-secondary"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Classes="Label" TextWrapping="Wrap"
+                               Text="Rights are letters R W A C D, or N for none. Add with no rights gives RWA, as SINTRAN's @CREATE-FRIEND does. A friend changed to N stays on the list with no rights."/>
+                </Grid>
 
             </StackPanel>
         </ScrollViewer>
@@ -123,7 +154,7 @@
                         Background="{DynamicResource FluentWarningBackgroundBrush}"
                         BorderBrush="{DynamicResource FluentWarningBorderBrush}"
                         BorderThickness="1" CornerRadius="4" Padding="8" IsVisible="False">
-                    <TextBlock Text="⚠️ This volume is mounted read-only. Re-mount read-write to reset the password."
+                    <TextBlock Text="⚠️ This volume is mounted read-only. Re-mount read-write to reset the password or change access and friends."
                                Foreground="{DynamicResource FluentTextPrimaryBrush}" TextWrapping="Wrap"/>
                 </Border>
 
