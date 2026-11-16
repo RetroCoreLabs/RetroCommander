@@ -120,6 +120,18 @@ flowchart TB
     class XAT ok
 ```
 
+## Opening a disk image from Explorer
+
+Start RetroCommander with a disk image as its argument - `RetroCommander.exe "Game Disk 1.d64"`, or a
+double-click on a linked file - and it mounts the image in the left pane and opens the image's folder
+in the right pane. Every extension a RetroIO driver declares works this way.
+
+On Windows, **Settings > File associations** lists those extensions with a tick box each. A tick
+links the extension to this copy of RetroCommander at once, for the current user only (no
+administrator rights needed); removing the tick removes the link and leaves any other program's
+claim on the extension alone. If Windows has a default app chosen for an extension through its own
+"Open with" dialog, that choice still wins.
+
 ## Copying between filesystems that do not agree
 
 ```mermaid
