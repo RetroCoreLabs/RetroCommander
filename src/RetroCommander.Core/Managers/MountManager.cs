@@ -240,6 +240,31 @@ public class MountManager
     }
 
     /// <summary>
+    /// Unmounts every mounted volume, so each image's pending changes are written back and its
+    /// file is closed (see <see cref="PanelManager.RemovePanel"/>). Call it when the program closes.
+    /// </summary>
+    /// <returns>
+    /// How many volumes were unmounted
+    /// </returns>
+    public int UnmountAll()
+    {
+        // Copy the ids first: Unmount removes from the collection being walked.
+        string[] ids = new string[_mountPoints.Count];
+        _mountPoints.Keys.CopyTo(ids, 0);
+
+        int count = 0;
+        for (int i = 0; i < ids.Length; i++)
+        {
+            if (Unmount(ids[i]))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
     /// Get mount point by ID
     /// </summary>
     public MountPoint? GetMountPoint(string mountPointId)

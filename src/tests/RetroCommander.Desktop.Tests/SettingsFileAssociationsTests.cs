@@ -7,22 +7,21 @@
 
 // RetroCommander.Desktop.Tests -- headless tests for the Settings "File associations" section.
 // They tick the real CheckBoxes the way a user does and read the registry back. The registry is a
-// throw-away key (HKEY_CURRENT_USER\Software\RetroCommanderTests\<guid>) deleted after each test;
-// the user's real file links are never touched.
+// throw-away key (see TestRegistry) deleted after each test; the user's real file links are never
+// touched.
 //
 // Regression: ticking .d64 and .d71, closing Settings and opening it again showed them unticked,
 // because ticks were only written by an Apply button. Ticks are now written at once.
-//
-// Each test creates and deletes its own key in try/finally. NUnit [SetUp]/[TearDown] are NOT
-// used: under [AvaloniaTest] the TearDown did not run (measured: every test left its key behind).
 
 using System;
 using System.Runtime.Versioning;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
+using Avalonia.Interactivity;
 using Microsoft.Win32;
 using NUnit.Framework;
 using RetroCommander.Core.Services;
+using RetroCommander.Tests.Shared;
 
 namespace RetroCommander.Desktop.Tests
 {
@@ -31,43 +30,126 @@ namespace RetroCommander.Desktop.Tests
     [SupportedOSPlatform("windows")]
     public class SettingsFileAssociationsTests
     {
-        private const string TestRootPath = @"Software\RetroCommanderTests";
         private const string ExePath = @"C:\Apps\RetroCommander\RetroCommander.exe";
 
-        // Runs a test body against a fresh throw-away classes key, and always deletes it.
-        private static void WithTestKey(Action<RegistryKey> body)
+        [AvaloniaTest]
+        public void Tick_WritesAtOnce_AndSurvivesClosingAndReopening()
         {
-            string keyPath = TestRootPath + "\\" + Guid.NewGuid().ToString("N");
-            RegistryKey classes = Registry.CurrentUser.CreateSubKey(keyPath, writable: true);
-            try
+            TestRegistry.WithThrowAwayClassesKey(classes =>
             {
-                body(classes);
-            }
-            finally
-            {
-                classes.Dispose();
-                Registry.CurrentUser.DeleteSubKeyTree(keyPath, throwOnMissingSubKey: false);
-                DeleteRootIfEmpty();
-            }
+                SettingsDialog first = Open(classes);
+                FindCheck(first, ".d64").IsChecked = true;
+                FindCheck(first, ".d71").IsChecked = true;
+                first.Close();
+
+                Assert.That(Service(classes).GetState(".d64"), Is.EqualTo(FileAssociationState.Linked));
+                Assert.That(Service(classes).GetState(".d71"), Is.EqualTo(FileAssociationState.Linked));
+
+                SettingsDialog second = Open(classes);
+                Assert.That(FindCheck(second, ".d64").IsChecked, Is.True);
+                Assert.That(FindCheck(second, ".d71").IsChecked, Is.True);
+                Assert.That(FindCheck(second, ".d81").IsChecked, Is.False);
+                second.Close();
+            });
         }
 
-        // Removes the shared parent key when no other test is using it.
-        private static void DeleteRootIfEmpty()
+        [AvaloniaTest]
+        public void Untick_RemovesTheLink_AndTheFileType()
         {
-            using (RegistryKey? parent = Registry.CurrentUser.OpenSubKey(TestRootPath))
+            TestRegistry.WithThrowAwayClassesKey(classes =>
             {
-                if (parent == null || parent.SubKeyCount > 0 || parent.ValueCount > 0)
-                {
-                    return;
-                }
-            }
+                SettingsDialog dialog = Open(classes);
+                FindCheck(dialog, ".d64").IsChecked = true;
+                FindCheck(dialog, ".d64").IsChecked = false;
+                dialog.Close();
 
-            Registry.CurrentUser.DeleteSubKey(TestRootPath, throwOnMissingSubKey: false);
+                Assert.That(Service(classes).GetState(".d64"), Is.EqualTo(FileAssociationState.NotLinked));
+                Assert.That(classes.SubKeyCount, Is.EqualTo(0), string.Join(", ", classes.GetSubKeyNames()));
+            });
+        }
+
+        [AvaloniaTest]
+        public void TickAll_LinksEveryKnownType_TickNone_RemovesThemAll()
+        {
+            TestRegistry.WithThrowAwayClassesKey(classes =>
+            {
+                SettingsDialog dialog = Open(classes);
+                dialog.AssociationTickAllButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+                for (int i = 0; i < KnownDiskImageTypes.Extensions.Count; i++)
+                {
+                    Assert.That(Service(classes).GetState(KnownDiskImageTypes.Extensions[i]),
+                        Is.EqualTo(FileAssociationState.Linked), KnownDiskImageTypes.Extensions[i]);
+                }
+
+                dialog.AssociationTickNoneButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                dialog.Close();
+
+                Assert.That(classes.SubKeyCount, Is.EqualTo(0), string.Join(", ", classes.GetSubKeyNames()));
+            });
+        }
+
+        [AvaloniaTest]
+        public void Tick_KeepsTheSameBoxes_SoKeyboardFocusIsNotLost()
+        {
+            TestRegistry.WithThrowAwayClassesKey(classes =>
+            {
+                SettingsDialog dialog = Open(classes);
+                CheckBox before = FindCheck(dialog, ".d81");
+                int count = dialog.FileAssociationList.Children.Count;
+
+                FindCheck(dialog, ".d64").IsChecked = true;
+
+                Assert.That(FindCheck(dialog, ".d81"), Is.SameAs(before));
+                Assert.That(dialog.FileAssociationList.Children.Count, Is.EqualTo(count));
+                Assert.That(count, Is.EqualTo(KnownDiskImageTypes.Extensions.Count));
+                dialog.Close();
+            });
+        }
+
+        [AvaloniaTest]
+        public void LinkedToOtherCopy_ShowsTicked_AndAnyChangeRepointsToThisExe()
+        {
+            TestRegistry.WithThrowAwayClassesKey(classes =>
+            {
+                new FileAssociationService(classes, @"D:\Old\RetroCommander.exe", notifyShell: false)
+                    .Apply(new[] { ".d64" }, ReadOnlySpan<string>.Empty);
+
+                SettingsDialog dialog = Open(classes);
+                Assert.That(FindCheck(dialog, ".d64").IsChecked, Is.True);
+                Assert.That(dialog.FileAssociationStatus.Text, Does.Contain(@"D:\Old\RetroCommander.exe"));
+
+                FindCheck(dialog, ".d71").IsChecked = true;
+                dialog.Close();
+
+                Assert.That(Service(classes).GetState(".d64"), Is.EqualTo(FileAssociationState.Linked));
+                Assert.That(Service(classes).GetState(".d71"), Is.EqualTo(FileAssociationState.Linked));
+            });
+        }
+
+        [AvaloniaTest]
+        public void ExePath_IsShownToTheUser()
+        {
+            TestRegistry.WithThrowAwayClassesKey(classes =>
+            {
+                SettingsDialog dialog = Open(classes);
+                Assert.That(dialog.FileAssociationExePath.Text, Does.Contain(ExePath));
+                Assert.That(dialog.FileAssociationsSection.IsVisible, Is.True);
+                dialog.Close();
+            });
         }
 
         private static FileAssociationService Service(RegistryKey classes)
         {
             return new FileAssociationService(classes, ExePath, notifyShell: false);
+        }
+
+        private static SettingsDialog Open(RegistryKey classes)
+        {
+            SettingsDialog dialog = new SettingsDialog(Service(classes));
+            // Show it, so Close() raises Closed as it does for the user.
+            dialog.Show();
+            return dialog;
         }
 
         private static CheckBox FindCheck(SettingsDialog dialog, string extension)
@@ -83,59 +165,6 @@ namespace RetroCommander.Desktop.Tests
 
             Assert.Fail($"No tick box for {extension}");
             return null!;
-        }
-
-        [AvaloniaTest]
-        public void Tick_WritesAtOnce_AndSurvivesClosingAndReopening()
-        {
-            WithTestKey(classes =>
-            {
-                SettingsDialog first = new SettingsDialog(Service(classes));
-                FindCheck(first, ".d64").IsChecked = true;
-                FindCheck(first, ".d71").IsChecked = true;
-                first.Close();
-
-                Assert.That(Service(classes).GetState(".d64"), Is.EqualTo(FileAssociationState.Linked));
-                Assert.That(Service(classes).GetState(".d71"), Is.EqualTo(FileAssociationState.Linked));
-
-                SettingsDialog second = new SettingsDialog(Service(classes));
-                Assert.That(FindCheck(second, ".d64").IsChecked, Is.True);
-                Assert.That(FindCheck(second, ".d71").IsChecked, Is.True);
-                Assert.That(FindCheck(second, ".d81").IsChecked, Is.False);
-                second.Close();
-            });
-        }
-
-        [AvaloniaTest]
-        public void Untick_RemovesTheLink()
-        {
-            WithTestKey(classes =>
-            {
-                SettingsDialog dialog = new SettingsDialog(Service(classes));
-                FindCheck(dialog, ".d64").IsChecked = true;
-                FindCheck(dialog, ".d64").IsChecked = false;
-                dialog.Close();
-
-                Assert.That(Service(classes).GetState(".d64"), Is.EqualTo(FileAssociationState.NotLinked));
-                Assert.That(classes.OpenSubKey(FileAssociationService.ProgId), Is.Null);
-            });
-        }
-
-        [AvaloniaTest]
-        public void TickAll_LinksEveryKnownType()
-        {
-            WithTestKey(classes =>
-            {
-                SettingsDialog dialog = new SettingsDialog(Service(classes));
-                dialog.AssociationTickAllButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-                dialog.Close();
-
-                for (int i = 0; i < KnownDiskImageTypes.Extensions.Count; i++)
-                {
-                    Assert.That(Service(classes).GetState(KnownDiskImageTypes.Extensions[i]),
-                        Is.EqualTo(FileAssociationState.Linked), KnownDiskImageTypes.Extensions[i]);
-                }
-            });
         }
     }
 }
