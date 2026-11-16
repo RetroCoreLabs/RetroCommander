@@ -144,7 +144,7 @@
                     <StackPanel Spacing="12">
                         <TextBlock Text="File associations" Classes="fluent-text-header"/>
 
-                        <TextBlock Text="Tick the disk image types that should open in RetroCommander when you double-click them in Explorer, then press Apply. The image is mounted in the left panel and the right panel opens its folder. This is for your Windows user only and needs no administrator rights."
+                        <TextBlock Text="Tick the disk image types that should open in RetroCommander when you double-click them in Explorer. Each tick takes effect at once. The image is mounted in the left panel and the right panel opens its folder. This is for your Windows user only and needs no administrator rights."
                                    Classes="fluent-text-secondary"
                                    TextWrapping="Wrap"/>
 
@@ -157,7 +157,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="AssociationTickAllButton" Content="Tick all" Click="OnAssociationTickAllClick"/>
                             <Button x:Name="AssociationTickNoneButton" Content="Tick none" Click="OnAssociationTickNoneClick"/>
-                            <Button x:Name="AssociationApplyButton" Content="Apply" Classes="dialog-primary" Click="OnAssociationApplyClick"/>
                         </StackPanel>
 
                         <TextBlock x:Name="FileAssociationExePath"
