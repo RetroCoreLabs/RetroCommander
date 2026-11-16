@@ -221,14 +221,15 @@ public partial class MountDialog : Window
         }
         else
         {
-            // Browse for disk image (NDFS, D64, D71, D81, BSD)
+            // Browse for a disk image. The filter lists every extension the registered drivers
+            // know (KnownDiskImageTypes), so a new driver appears here without a UI change.
             var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select Disk Image",
                 AllowMultiple = false,
                 FileTypeFilter = new List<FilePickerFileType>
                 {
-                    new FilePickerFileType("Disk Images") { Patterns = new[] { "*.ndfs", "*.img", "*.d64", "*.d71", "*.d81", "*.bsd", "*.dsk" } },
+                    new FilePickerFileType("Disk Images") { Patterns = RetroCommander.Core.Services.KnownDiskImageTypes.GetFilePickerPatterns() },
                     new FilePickerFileType("All Files") { Patterns = new[] { "*.*" } }
                 }
             });
