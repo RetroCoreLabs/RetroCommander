@@ -35,7 +35,17 @@ public partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var window = new MainWindow();
+
+            // A file passed on the command line (for example a disk image double-clicked in
+            // Explorer through a file association) is mounted in the left panel at startup.
+            string[]? args = desktop.Args;
+            if (args != null && args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
+            {
+                window.StartupImagePath = args[0];
+            }
+
+            desktop.MainWindow = window;
         }
 
         base.OnFrameworkInitializationCompleted();
