@@ -2990,7 +2990,8 @@ File Viewer (F3):
     }
 
     // New Fluent UI Event Handlers
-    private async void OnSidebarItemSelected(object? sender, SidebarItemSelectedEventArgs e)
+    // Internal so headless tests can drive a sidebar click; only the sidebar calls it otherwise.
+    internal async void OnSidebarItemSelected(object? sender, SidebarItemSelectedEventArgs e)
     {
         try
         {
@@ -3197,167 +3198,16 @@ File Viewer (F3):
                 return;
             }
 
-            // Check if the path is a disk image file
-            var fileName = Path.GetFileName(actualPath);
-            if (File.Exists(actualPath) && IsDiskImage(fileName))
+            // A disk image file: mount it with the same helper as the panel double-click and the
+            // startup image (detection, the mount dialog when unsure, the retry dialog on failure,
+            // and the guard against mounting twice at once). It goes to the panel the user chose
+            // ("Open in Left/Right Panel"), else the active one; the old copy of this code always
+            // used the active panel and ignored that choice for disk images.
+            if (File.Exists(actualPath) && IsDiskImage(Path.GetFileName(actualPath)))
             {
-                // Detect filesystem types
-                var detectionConfidences = DetectFilesystemTypes(actualPath);
-
-                // Determine if we should show generic mount dialog
-                float maxConfidence = detectionConfidences.Values.DefaultIfEmpty(0).Max();
-                string detectedType = detectionConfidences.Count > 0
-                    ? detectionConfidences.OrderByDescending(x => x.Value).First().Key
-                    : "";
-
-                // ALWAYS show dialog for FFS/BSD to allow partition selection
-                bool needsPartitionSelection = detectedType.StartsWith("FFS") || detectedType.StartsWith("BSD");
-                bool showGenericDialog = maxConfidence < 0.8f || detectionConfidences.Count == 0 || needsPartitionSelection;
-
-                string urn;
-
-                if (showGenericDialog)
-                {
-                    // Show generic mount dialog for uncertain detection
-                    var dialog = new GenericMountDialog(actualPath, detectionConfidences);
-                    var result = await dialog.ShowDialog<bool>(this);
-
-                    if (!result || string.IsNullOrEmpty(dialog.SelectedUrn))
-                    {
-                        SetStatus("Mount cancelled");
-                        return;
-                    }
-
-                    urn = dialog.SelectedUrn;
-                }
-                else
-                {
-                    // Auto-detect URN scheme based on filename and detection
-                    var scheme = DetectUrnScheme(fileName);
-                    urn = scheme + actualPath.Replace("\\", "/");
-
-                    bool isNdfs = scheme == "ndfs://";
-
-                    // If using file:// scheme, use detection results
-                    if (!isNdfs && scheme == "file:///")
-                    {
-                        if (detectionConfidences.TryGetValue("NDFS", out float ndfsConfidence) &&
-                            detectionConfidences.TryGetValue("BSD", out float bsdConfidence))
-                        {
-                            // Only use NDFS if confidence is very high AND significantly higher than BSD
-                            if (ndfsConfidence > 0.8f && ndfsConfidence > bsdConfidence + 0.2f)
-                            {
-                                isNdfs = true;
-                                urn = "ndfs://" + actualPath.Replace("\\", "/");
-                                _logger?.LogInfo($"Detected as NDFS with confidence {ndfsConfidence:F2} (BSD: {bsdConfidence:F2})");
-                            }
-                            else if (bsdConfidence > 0.5f)
-                            {
-                                urn = "bsd://" + actualPath.Replace("\\", "/");
-                                _logger?.LogInfo($"Detected as BSD with confidence {bsdConfidence:F2} (NDFS: {ndfsConfidence:F2})");
-                            }
-                        }
-                    }
-
-                    // Show info dialogs if needed
-                    if (isNdfs)
-                    {
-                        var settings = RetroCommanderSettings.Load();
-                        if (!settings.SkipNdfsInfoDialog)
-                        {
-                            bool? result = await ShowNdfsInfoDialogAsync(actualPath);
-                            if (result != true)
-                            {
-                                SetStatus("Mount cancelled");
-                                return;
-                            }
-                        }
-                    }
-                    // Note: BSD/FFS special-case handling removed - GenericMountDialog now shows detailed info for all filesystem types
-                }
-
-                // Mount the disk image instead of navigating to it
-                SetStatus($"Mounting {e.Item.Name}...");
-
-                _logger?.LogInfo($"Detected disk image, mounting with URN: {urn}");
-
-                // Use MountManager to mount
-                var mountOptions = new MountOptions
-                {
-                    DisplayName = fileName,
-                    AutoNavigateToPath = false
-                };
-
-                var mountResult = await _mountManager.MountAsync(urn, mountOptions);
-
-                if (mountResult.HasValue)
-                {
-                    var (mountPoint, panel) = mountResult.Value;
-
-                    _logger?.LogInfo($"Mount successful, mounting on {(_leftPanelActive ? "left" : "right")} panel");
-
-                    // Mount on active panel
-                    if (_leftPanelActive)
-                    {
-                        _leftPanel = panel;
-                        await RefreshLeftPanelAsync();
-                        SetStatus($"✓ Mounted {e.Item.Name} on left panel");
-                    }
-                    else
-                    {
-                        _rightPanel = panel;
-                        await RefreshRightPanelAsync();
-                        SetStatus($"✓ Mounted {e.Item.Name} on right panel");
-                    }
-
-                    // Add to sidebar Mounts section if not already there
-                    AddMountToUi(
-                        mountPoint.DisplayName,
-                        mountPoint.Urn,
-                        mountPoint.FileSystemType);
-
-                    _logger?.LogInfo($"Successfully mounted {actualPath}");
-                    return; // Important: return here to avoid navigation
-                }
-                else
-                {
-                    // Mount failed - show generic dialog to allow retry with different settings
-                    SetStatus($"✗ Mount failed: Could not mount {e.Item.Name}");
-                    _logger?.LogError($"MountManager.MountAsync returned null for {urn}");
-
-                    // Show generic dialog to allow user to override filesystem type
-                    var retryDialog = new GenericMountDialog(actualPath, detectionConfidences);
-                    var retryResult = await retryDialog.ShowDialog<bool>(this);
-
-                    if (retryResult && !string.IsNullOrEmpty(retryDialog.SelectedUrn))
-                    {
-                        // Retry with user-selected URN
-                        var retryMountResult = await _mountManager.MountAsync(retryDialog.SelectedUrn, mountOptions);
-                        if (retryMountResult.HasValue)
-                        {
-                            var (mountPoint, panel) = retryMountResult.Value;
-                            if (_leftPanelActive)
-                            {
-                                _leftPanel = panel;
-                                await RefreshLeftPanelAsync();
-                                SetStatus($"✓ Mounted {e.Item.Name} on left panel");
-                            }
-                            else
-                            {
-                                _rightPanel = panel;
-                                await RefreshRightPanelAsync();
-                                SetStatus($"✓ Mounted {e.Item.Name} on right panel");
-                            }
-                            AddMountToUi(
-                                mountPoint.DisplayName,
-                                mountPoint.Urn,
-                                mountPoint.FileSystemType);
-                        }
-                    }
-                    return; // Don't try to navigate if mount failed
-                }
+                await MountImageFileAsync(actualPath, toLeft);
+                return; // Never navigate into an image file
             }
-
             // Regular navigation for directories/drives
             SetStatus($"Navigating to {e.Item.Name}...");
             await NavigateToPathAsync(e.Item.Path, toLeft);
