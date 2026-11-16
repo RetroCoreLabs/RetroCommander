@@ -28,4 +28,9 @@
     <ProjectReference Include="..\..\RetroCommander.Desktop\RetroCommander.Desktop.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The throw-away registry helper lives once, in the Core test project; compile the same file here. -->
+    <Compile Include="..\RetroCommander.Core.Tests\TestRegistry.cs" Link="Shared\TestRegistry.cs" />
+  </ItemGroup>
+
 </Project>

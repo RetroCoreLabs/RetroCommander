@@ -13,24 +13,6 @@ using Microsoft.Win32;
 namespace RetroCommander.Core.Services
 {
     /// <summary>
-    /// What Windows currently does with one file extension, as far as RetroCommander is concerned.
-    /// </summary>
-    public enum FileAssociationState
-    {
-        /// <summary>The extension is not linked to RetroCommander.</summary>
-        NotLinked,
-
-        /// <summary>The extension is linked to RetroCommander at the exe path given.</summary>
-        Linked,
-
-        /// <summary>
-        /// The extension is linked to RetroCommander, but to an exe at a different path (the
-        /// program was moved or a different copy was linked). Opening a file would start that copy.
-        /// </summary>
-        LinkedToOtherCopy
-    }
-
-    /// <summary>
     /// Links disk image extensions (".d64", ".img", ...) to RetroCommander in Windows, for the
     /// current user only, so a double-click in Explorer starts RetroCommander with the file.
     /// </summary>
@@ -38,17 +20,11 @@ namespace RetroCommander.Core.Services
     /// <para>
     /// Everything is written under the user's own classes key (HKEY_CURRENT_USER\Software\Classes),
     /// which needs no administrator rights. The layout is the one Windows documents for file types:
+    ///  - <c>RetroCommander.DiskImage</c> is one file type ("ProgID") with the exe's icon.
+    ///  - Its <c>shell\open\command</c> is the quoted exe path followed by <c>"%1"</c>.
+    ///  - Each <c>.ext</c> key's default value names that file type.
+    ///  - Each <c>.ext\OpenWithProgids</c> lists it too, so it shows in Explorer's "Open with" list.
     /// </para>
-    /// <list type="bullet">
-    /// <item><description>
-    /// <c>RetroCommander.DiskImage</c> - one file type ("ProgID") whose <c>shell\open\command</c> is
-    /// <c>"&lt;exe&gt;" "%1"</c> and whose icon is the exe's icon.
-    /// </description></item>
-    /// <item><description>
-    /// <c>.ext</c> - its default value is set to the file type, and the file type is added under
-    /// <c>.ext\OpenWithProgids</c> so it also appears in Explorer's "Open with" list.
-    /// </description></item>
-    /// </list>
     /// <para>
     /// Windows 10 and 11 do NOT let a program make itself the default by writing the registry: if
     /// the user has already picked a program for an extension (the protected "UserChoice"), that
@@ -61,65 +37,70 @@ namespace RetroCommander.Core.Services
     /// </para>
     /// </remarks>
     [SupportedOSPlatform("windows")]
-    public sealed class FileAssociationService
+    public sealed class FileAssociationService : IDisposable
     {
-        /// <summary>
-        /// The file type name ("ProgID") RetroCommander registers its extensions under.
-        /// </summary>
-        public const string ProgId = "RetroCommander.DiskImage";
-
-        private const string OpenWithProgIdsKey = "OpenWithProgids";
-        private const string OpenCommandKey = @"shell\open\command";
-
         private readonly RegistryKey _classesRoot;
+        private readonly bool _ownsClassesRoot;
         private readonly string _exePath;
+        private readonly string _progId;
         private readonly bool _notifyShell;
 
         /// <summary>
-        /// Creates a service that writes to the current user's classes key and tells Explorer
-        /// about each change.
+        /// The file type name ("ProgID") RetroCommander registers its extensions under.
         /// </summary>
-        /// <param name="exePath">
-        /// Full path of the RetroCommander exe that opened files should start
-        /// </param>
-        /// <returns>
-        /// A service for the real Windows registry
-        /// </returns>
-        public static FileAssociationService ForCurrentUser(string exePath)
-        {
-            RegistryKey classes = Registry.CurrentUser.CreateSubKey(@"Software\Classes", writable: true);
-            return new FileAssociationService(classes, exePath, notifyShell: true);
-        }
+        public const string DefaultProgId = "RetroCommander.DiskImage";
+
+        private const string FileTypeName = "Retro disk image";
+        private const string OpenWithProgIdsKey = "OpenWithProgids";
+        private const string OpenCommandKey = @"shell\open\command";
+        private const string DefaultIconKey = "DefaultIcon";
+
+        // SHChangeNotify: "the file type links changed", no items (SHCNF_IDLIST with null items).
+        private const int ShcneAssocChanged = 0x08000000;
+        private const uint ShcnfIdList = 0x0000;
+
+        // Characters that would make an "extension" name another key or a multi-part extension.
+        private static readonly char[] s_notAllowedInExtension = { '\\', '/', ' ', '.' };
 
         /// <summary>
         /// Creates a service that writes below the given key instead of the real classes key.
         /// </summary>
         /// <param name="classesRoot">
-        /// Writable key that plays the part of HKEY_CURRENT_USER\Software\Classes (tests pass a
-        /// throw-away key here)
+        /// Writable key that plays the part of HKEY_CURRENT_USER\Software\Classes; the caller keeps
+        /// ownership (tests pass a throw-away key here)
         /// </param>
         /// <param name="exePath">
         /// Full path of the RetroCommander exe that opened files should start
         /// </param>
         /// <param name="notifyShell">
-        /// True to tell Explorer that file links changed after each write
+        /// True to tell Explorer that file links changed after each change
+        /// </param>
+        /// <param name="progId">
+        /// File type name to register under; <see cref="DefaultProgId"/> unless a test needs its
+        /// own so it cannot disturb the real one
         /// </param>
         /// <exception cref="ArgumentNullException">
         /// Thrown when <paramref name="classesRoot"/> is null
         /// </exception>
         /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="exePath"/> is empty
+        /// Thrown when <paramref name="exePath"/> or <paramref name="progId"/> is empty
         /// </exception>
-        public FileAssociationService(RegistryKey classesRoot, string exePath, bool notifyShell)
+        public FileAssociationService(RegistryKey classesRoot, string exePath, bool notifyShell, string progId = DefaultProgId)
+            : this(classesRoot, ownsClassesRoot: false, exePath, notifyShell, progId)
         {
-            _classesRoot = classesRoot ?? throw new ArgumentNullException(nameof(classesRoot));
-            if (string.IsNullOrWhiteSpace(exePath))
-            {
-                throw new ArgumentException("The exe path cannot be empty.", nameof(exePath));
-            }
+        }
 
+        private FileAssociationService(RegistryKey classesRoot, bool ownsClassesRoot, string exePath, bool notifyShell, string progId)
+        {
+            ArgumentNullException.ThrowIfNull(classesRoot);
+            ArgumentException.ThrowIfNullOrWhiteSpace(exePath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(progId);
+
+            _classesRoot = classesRoot;
+            _ownsClassesRoot = ownsClassesRoot;
             _exePath = exePath;
             _notifyShell = notifyShell;
+            _progId = progId;
         }
 
         /// <summary>
@@ -128,38 +109,47 @@ namespace RetroCommander.Core.Services
         public string ExePath => _exePath;
 
         /// <summary>
+        /// Gets the file type name ("ProgID") this service registers under.
+        /// </summary>
+        public string ProgId => _progId;
+
+        /// <summary>
         /// Gets the exact command line Windows is given for opening a file, for example
         /// <c>"C:\Apps\RetroCommander.exe" "%1"</c>.
         /// </summary>
         public string OpenCommand => "\"" + _exePath + "\" \"%1\"";
 
         /// <summary>
+        /// Creates a service for the real Windows registry: it writes to the current user's classes
+        /// key and tells Explorer about each change. Dispose it when done.
+        /// </summary>
+        /// <param name="exePath">
+        /// Full path of the RetroCommander exe that opened files should start
+        /// </param>
+        /// <returns>
+        /// A service for the current user's file links
+        /// </returns>
+        public static FileAssociationService ForCurrentUser(string exePath)
+        {
+            RegistryKey classes = Registry.CurrentUser.CreateSubKey(@"Software\Classes", writable: true);
+            return new FileAssociationService(classes, ownsClassesRoot: true, exePath, notifyShell: true, DefaultProgId);
+        }
+
+        /// <summary>
         /// Reports whether an extension is linked to RetroCommander, and to which copy.
         /// </summary>
         /// <param name="extension">
-        /// Extension with the leading dot, for example ".d64"
+        /// Extension with or without the leading dot, any case, for example ".d64"
         /// </param>
         /// <returns>
         /// The extension's state
         /// </returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="extension"/> is not a file extension
+        /// </exception>
         public FileAssociationState GetState(string extension)
         {
-            string ext = NormaliseExtension(extension);
-
-            using RegistryKey? extKey = _classesRoot.OpenSubKey(ext);
-            if (extKey == null)
-            {
-                return FileAssociationState.NotLinked;
-            }
-
-            bool isDefault = string.Equals(extKey.GetValue(null) as string, ProgId, StringComparison.OrdinalIgnoreCase);
-            bool inOpenWith;
-            using (RegistryKey? openWith = extKey.OpenSubKey(OpenWithProgIdsKey))
-            {
-                inOpenWith = openWith != null && openWith.GetValue(ProgId) != null;
-            }
-
-            if (!isDefault && !inOpenWith)
+            if (!NamesOurFileType(NormaliseExtension(extension)))
             {
                 return FileAssociationState.NotLinked;
             }
@@ -185,106 +175,152 @@ namespace RetroCommander.Core.Services
         /// </returns>
         public string? ReadRegisteredCommand()
         {
-            using RegistryKey? commandKey = _classesRoot.OpenSubKey(ProgId + "\\" + OpenCommandKey);
+            using RegistryKey? commandKey = _classesRoot.OpenSubKey(_progId + "\\" + OpenCommandKey);
             return commandKey?.GetValue(null) as string;
         }
 
         /// <summary>
-        /// Links the given extensions to this RetroCommander exe. Re-linking an extension that is
-        /// already linked is harmless and updates the exe path.
+        /// Makes the registry match a set of choices: every extension in
+        /// <paramref name="toLink"/> opens with this exe, and RetroCommander's link is removed from
+        /// every extension in <paramref name="toUnlink"/>. When nothing is linked, RetroCommander's
+        /// file type is removed too. Explorer is told once at the end.
         /// </summary>
-        /// <param name="extensions">
-        /// Extensions with the leading dot, for example ".d64"
+        /// <param name="toLink">
+        /// Extensions to link (re-linking one that is linked is harmless and updates the exe path)
         /// </param>
-        public void Link(ReadOnlySpan<string> extensions)
+        /// <param name="toUnlink">
+        /// Extensions to unlink; links that name another program are left as they are
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// Thrown when an entry of <paramref name="toLink"/> or <paramref name="toUnlink"/> is not a
+        /// file extension; nothing after that entry is written
+        /// </exception>
+        public void Apply(ReadOnlySpan<string> toLink, ReadOnlySpan<string> toUnlink)
         {
-            WriteProgId();
-
-            for (int i = 0; i < extensions.Length; i++)
+            if (toLink.Length > 0)
             {
-                string ext = NormaliseExtension(extensions[i]);
-                using RegistryKey extKey = _classesRoot.CreateSubKey(ext, writable: true);
-                extKey.SetValue(null, ProgId, RegistryValueKind.String);
-
-                using RegistryKey openWith = extKey.CreateSubKey(OpenWithProgIdsKey, writable: true);
-                // An empty value of type "none" is how Windows lists a ProgID under OpenWithProgids.
-                openWith.SetValue(ProgId, Array.Empty<byte>(), RegistryValueKind.None);
+                WriteFileType();
             }
 
-            NotifyShell();
+            for (int i = 0; i < toLink.Length; i++)
+            {
+                LinkOne(NormaliseExtension(toLink[i]));
+            }
+
+            for (int i = 0; i < toUnlink.Length; i++)
+            {
+                UnlinkOne(NormaliseExtension(toUnlink[i]));
+            }
+
+            if (toLink.Length == 0)
+            {
+                _classesRoot.DeleteSubKeyTree(_progId, throwOnMissingSubKey: false);
+            }
+
+            if (_notifyShell)
+            {
+                SHChangeNotify(ShcneAssocChanged, ShcnfIdList, IntPtr.Zero, IntPtr.Zero);
+            }
         }
 
         /// <summary>
-        /// Removes RetroCommander's link from the given extensions. Links that name another
-        /// program are left as they are. When no extension is linked any more, RetroCommander's
-        /// file type is removed too.
+        /// Closes the registry key when this service opened it (<see cref="ForCurrentUser"/>).
         /// </summary>
-        /// <param name="extensions">
-        /// Extensions with the leading dot, for example ".d64"
-        /// </param>
-        /// <param name="allKnownExtensions">
-        /// Every extension RetroCommander can link; used to decide whether the file type is still
-        /// in use by any of them
-        /// </param>
-        public void Unlink(ReadOnlySpan<string> extensions, ReadOnlySpan<string> allKnownExtensions)
+        public void Dispose()
         {
-            for (int i = 0; i < extensions.Length; i++)
+            if (_ownsClassesRoot)
             {
-                string ext = NormaliseExtension(extensions[i]);
-                using RegistryKey? extKey = _classesRoot.OpenSubKey(ext, writable: true);
-                if (extKey == null)
-                {
-                    continue;
-                }
+                _classesRoot.Dispose();
+            }
+        }
 
-                if (string.Equals(extKey.GetValue(null) as string, ProgId, StringComparison.OrdinalIgnoreCase))
-                {
-                    extKey.DeleteValue(string.Empty, throwOnMissingValue: false);
-                }
-
-                using (RegistryKey? openWith = extKey.OpenSubKey(OpenWithProgIdsKey, writable: true))
-                {
-                    if (openWith != null)
-                    {
-                        openWith.DeleteValue(ProgId, throwOnMissingValue: false);
-                    }
-                }
-
-                DeleteIfEmpty(extKey, OpenWithProgIdsKey);
+        // Lower case with exactly one leading dot, so ".D64", "d64" and ".d64" are the same key.
+        // Throws on anything that is not a plain extension, so no other key can be written.
+        internal static string NormaliseExtension(string extension)
+        {
+            ArgumentNullException.ThrowIfNull(extension);
+            string trimmed = extension.Trim();
+            if (trimmed.StartsWith('.'))
+            {
+                trimmed = trimmed.Substring(1);
             }
 
-            for (int i = 0; i < extensions.Length; i++)
+            if (trimmed.Length == 0 || trimmed.IndexOfAny(s_notAllowedInExtension) >= 0)
             {
-                DeleteIfEmpty(_classesRoot, NormaliseExtension(extensions[i]));
+                throw new ArgumentException($"'{extension}' is not a file extension.", nameof(extension));
             }
 
-            bool stillUsed = false;
-            for (int i = 0; i < allKnownExtensions.Length && !stillUsed; i++)
+            return "." + trimmed.ToLowerInvariant();
+        }
+
+        // True when the extension's default value, or its OpenWithProgids list, names our file type.
+        private bool NamesOurFileType(string ext)
+        {
+            using RegistryKey? extKey = _classesRoot.OpenSubKey(ext);
+            if (extKey == null)
             {
-                stillUsed = GetState(allKnownExtensions[i]) != FileAssociationState.NotLinked;
+                return false;
             }
 
-            if (!stillUsed)
+            if (string.Equals(extKey.GetValue(null) as string, _progId, StringComparison.OrdinalIgnoreCase))
             {
-                _classesRoot.DeleteSubKeyTree(ProgId, throwOnMissingSubKey: false);
+                return true;
             }
 
-            NotifyShell();
+            using RegistryKey? openWith = extKey.OpenSubKey(OpenWithProgIdsKey);
+            return openWith != null && openWith.GetValue(_progId) != null;
         }
 
         // Writes the RetroCommander file type: its name, its icon and the command that opens a file.
-        private void WriteProgId()
+        private void WriteFileType()
         {
-            using RegistryKey progIdKey = _classesRoot.CreateSubKey(ProgId, writable: true);
-            progIdKey.SetValue(null, "Retro disk image", RegistryValueKind.String);
+            using RegistryKey progIdKey = _classesRoot.CreateSubKey(_progId, writable: true);
+            progIdKey.SetValue(null, FileTypeName, RegistryValueKind.String);
 
-            using (RegistryKey iconKey = progIdKey.CreateSubKey("DefaultIcon", writable: true))
+            using (RegistryKey iconKey = progIdKey.CreateSubKey(DefaultIconKey, writable: true))
             {
                 iconKey.SetValue(null, "\"" + _exePath + "\",0", RegistryValueKind.String);
             }
 
             using RegistryKey commandKey = progIdKey.CreateSubKey(OpenCommandKey, writable: true);
             commandKey.SetValue(null, OpenCommand, RegistryValueKind.String);
+        }
+
+        // Points one extension at our file type and lists it under "Open with".
+        private void LinkOne(string ext)
+        {
+            using RegistryKey extKey = _classesRoot.CreateSubKey(ext, writable: true);
+            extKey.SetValue(null, _progId, RegistryValueKind.String);
+
+            using RegistryKey openWith = extKey.CreateSubKey(OpenWithProgIdsKey, writable: true);
+            // An empty value of type "none" is how Windows lists a ProgID under OpenWithProgids.
+            openWith.SetValue(_progId, Array.Empty<byte>(), RegistryValueKind.None);
+        }
+
+        // Removes our file type from one extension, then any key that is left empty.
+        private void UnlinkOne(string ext)
+        {
+            using (RegistryKey? extKey = _classesRoot.OpenSubKey(ext, writable: true))
+            {
+                if (extKey == null)
+                {
+                    return;
+                }
+
+                if (string.Equals(extKey.GetValue(null) as string, _progId, StringComparison.OrdinalIgnoreCase))
+                {
+                    extKey.DeleteValue(string.Empty, throwOnMissingValue: false);
+                }
+
+                using (RegistryKey? openWith = extKey.OpenSubKey(OpenWithProgIdsKey, writable: true))
+                {
+                    openWith?.DeleteValue(_progId, throwOnMissingValue: false);
+                }
+
+                DeleteIfEmpty(extKey, OpenWithProgIdsKey);
+            }
+
+            DeleteIfEmpty(_classesRoot, ext);
         }
 
         // Deletes a subkey when it has no values and no subkeys left (so unlinking leaves no
@@ -302,36 +338,9 @@ namespace RetroCommander.Core.Services
             parent.DeleteSubKey(name, throwOnMissingSubKey: false);
         }
 
-        // Lower case with exactly one leading dot, so ".D64", "d64" and ".d64" are the same key.
-        private static string NormaliseExtension(string extension)
-        {
-            if (string.IsNullOrWhiteSpace(extension))
-            {
-                throw new ArgumentException("An extension cannot be empty.", nameof(extension));
-            }
-
-            string trimmed = extension.Trim().TrimStart('.').ToLowerInvariant();
-            if (trimmed.Length == 0 || trimmed.IndexOfAny(new[] { '\\', '/', ' ' }) >= 0)
-            {
-                throw new ArgumentException($"'{extension}' is not a file extension.", nameof(extension));
-            }
-
-            return "." + trimmed;
-        }
-
-        // Tells Explorer that file links changed, so icons and "Open with" refresh without a
-        // restart. SHCNE_ASSOCCHANGED with SHCNF_IDLIST and no items is the documented call.
-        private void NotifyShell()
-        {
-            if (_notifyShell)
-            {
-                SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
-            }
-        }
-
-        private const int SHCNE_ASSOCCHANGED = 0x08000000;
-        private const uint SHCNF_IDLIST = 0x0000;
-
+        // Tells Explorer that file links changed, so icons and "Open with" refresh without a restart.
+        // DllImport, not LibraryImport: LibraryImport needs AllowUnsafeBlocks for the whole Core
+        // project, which is not worth it for one call with plain value parameters.
         [DllImport("shell32.dll")]
         private static extern void SHChangeNotify(int wEventId, uint uFlags, IntPtr dwItem1, IntPtr dwItem2);
     }

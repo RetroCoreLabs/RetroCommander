@@ -86,6 +86,18 @@ public partial class MainWindow : Window
     /// drag-and-drop, keyboard and sidebar events.
     /// </summary>
     public MainWindow()
+        : this(logFilePath: null)
+    {
+    }
+
+    /// <summary>
+    /// Creates the window with its log written to the given file. Tests use this so they do not
+    /// write into the user's real RetroCommander log.
+    /// </summary>
+    /// <param name="logFilePath">
+    /// Log file to write to, or null for the normal one under the local application data folder
+    /// </param>
+    internal MainWindow(string? logFilePath)
     {
         InitializeComponent();
         Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://RetroCommander/Assets/RetroCommander-icon.png")));
@@ -96,6 +108,10 @@ public partial class MainWindow : Window
             FileLogLevel = LogLevel.Debug,
             UILogLevel = LogLevel.Warning
         };
+        if (logFilePath != null)
+        {
+            loggingConfig.LogFilePath = logFilePath;
+        }
         _logFilePath = loggingConfig.LogFilePath;
         _logger = new UnifiedLogger(loggingConfig);
 
@@ -173,7 +189,31 @@ public partial class MainWindow : Window
 
         // Auto-mount default Windows paths after window is loaded
         Opened += async (s, e) => await InitializeDefaultPanelsAsync();
+
+        // Unmount everything when the window closes, so each image's pending changes are written
+        // back and its file is closed. Without this, closing the app left images open and could
+        // lose changes still waiting in memory (an unmount is what flushes them).
+        Closed += OnClosedUnmountAll;
     }
+
+    private void OnClosedUnmountAll(object? sender, EventArgs e)
+    {
+        try
+        {
+            int count = _mountManager.UnmountAll();
+            _logger?.LogInfo($"Closing: unmounted {count} image(s)");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError("Closing: unmounting the images failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a disk image file given on the command line. When set, the image is mounted in
+    /// the left panel at startup and the right panel opens the folder the image lives in.
+    /// </summary>
+    public string? StartupImagePath { get; set; }
 
     private void InitializeNavigationToolbar()
     {
@@ -232,12 +272,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Gets or sets a disk image file given on the command line. When set, the image is mounted in
-    /// the left panel at startup and the right panel opens the folder the image lives in.
-    /// </summary>
-    public string? StartupImagePath { get; set; }
-
     // Mounts the command-line image on the left and shows its folder on the right.
     // The extension is NOT checked here: any file the user opened with RetroCommander goes through
     // the same filesystem detection as a double-click (every registered driver is scored, and the
@@ -262,36 +296,10 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Both panels start in the image's folder. The right one stays there; the left one
-            // is then replaced by the mounted image.
+            // The right panel shows the image's folder; the left panel gets the mounted image.
             await NavigateToPathAsync(folder, false);
-            await NavigateToPathAsync(folder, true);
-
-            if (_leftPanel == null)
-            {
-                return;
-            }
-
-            string fileName = Path.GetFileName(fullPath);
-            IFileSystemEntry? entry = null;
-            for (int i = 0; i < _leftPanel.Entries.Count; i++)
-            {
-                if (string.Equals(_leftPanel.Entries[i].Name, fileName, StringComparison.OrdinalIgnoreCase))
-                {
-                    entry = _leftPanel.Entries[i];
-                    break;
-                }
-            }
-
-            if (entry == null)
-            {
-                SetStatus($"✗ {fileName} not listed in {folder}");
-                _logger?.LogWarning($"Startup image {fileName} not found in panel listing of {folder}");
-                return;
-            }
-
             _leftPanelActive = true;
-            await MountDiskImageAsync(entry, true);
+            await MountImageFileAsync(fullPath, toLeft: true);
         }
         catch (Exception ex)
         {
@@ -2340,12 +2348,33 @@ File Viewer (F3):
     // Helper: Mount disk image file
     private bool _isMounting = false; // Guard to prevent double-mounting
 
-    private async Task MountDiskImageAsync(IFileSystemEntry entry, bool mountOnLeft)
+    // Mounts a disk image listed in a panel (double-click, Enter). sourceIsLeft says which
+    // panel's folder the entry is in; the mounted image goes to the ACTIVE panel, as before.
+    private async Task MountDiskImageAsync(IFileSystemEntry entry, bool sourceIsLeft)
     {
+        IFileSystemPanel? sourcePanel = sourceIsLeft ? _leftPanel : _rightPanel;
+        if (sourcePanel == null)
+        {
+            return;
+        }
+
+        string fullPath = Path.GetFullPath(Path.Combine(sourcePanel.CurrentPath, entry.Name));
+        await MountImageFileAsync(fullPath, _leftPanelActive);
+    }
+
+    // Mounts the disk image file at fullPath into the left (toLeft) or right panel.
+    // Detection scores every registered driver; when it is unsure, or the disk has partitions
+    // (FFS/BSD), the mount dialog lets the user choose. NDFS shows its info dialog first unless
+    // the user turned it off. A failed mount offers the mount dialog again to pick another type.
+    // Used by the panel double-click and by a file given on the command line at startup.
+    private async Task MountImageFileAsync(string fullPath, bool toLeft)
+    {
+        string fileName = Path.GetFileName(fullPath);
+
         // Prevent double-mounting
         if (_isMounting)
         {
-            _logger?.LogWarning($"Mount already in progress, ignoring duplicate mount request for {entry.Name}");
+            _logger?.LogWarning($"Mount already in progress, ignoring duplicate mount request for {fileName}");
             return;
         }
 
@@ -2353,223 +2382,49 @@ File Viewer (F3):
 
         try
         {
-            SetStatus($"Mounting {entry.Name}...");
+            SetStatus($"Mounting {fileName}...");
 
-            // Get full path
-            var sourcePanel = mountOnLeft ? _leftPanel : _rightPanel;
-            if (sourcePanel == null)
+            // Detect filesystem types
+            Dictionary<string, float> detectionConfidences = DetectFilesystemTypes(fullPath);
+
+            string? urn = await ChooseMountUrnAsync(fullPath, detectionConfidences);
+            if (urn == null)
             {
-                _isMounting = false;
+                SetStatus("Mount cancelled");
                 return;
             }
 
-            var fullPath = Path.GetFullPath(Path.Combine(sourcePanel.CurrentPath, entry.Name));
-
-            // Detect filesystem types
-            var detectionConfidences = DetectFilesystemTypes(fullPath);
-
-            // Determine if we should show generic mount dialog
-            float maxConfidence = detectionConfidences.Values.DefaultIfEmpty(0).Max();
-            string detectedType = detectionConfidences.Count > 0
-                ? detectionConfidences.OrderByDescending(x => x.Value).First().Key
-                : "";
-
-            // ALWAYS show dialog for FFS/BSD to allow partition selection
-            bool needsPartitionSelection = detectedType.StartsWith("FFS") || detectedType.StartsWith("BSD");
-            bool showGenericDialog = maxConfidence < 0.8f || detectionConfidences.Count == 0 || needsPartitionSelection;
-
-            string urn;
-
-            if (showGenericDialog)
-            {
-                // Show generic mount dialog for uncertain detection
-                var dialog = new GenericMountDialog(fullPath, detectionConfidences);
-                var result = await dialog.ShowDialog<bool>(this);
-
-                if (!result || string.IsNullOrEmpty(dialog.SelectedUrn))
-                {
-                    SetStatus("Mount cancelled");
-                    _isMounting = false;
-                    return;
-                }
-
-                urn = dialog.SelectedUrn;
-
-                // Save "don't show again" preference if set
-                if (dialog.DontShowAgain)
-                {
-                    var settings = RetroCommanderSettings.Load();
-                    // Note: We could add a setting for generic dialog, but for now just continue
-                }
-            }
-            else
-            {
-                // Auto-detect URN scheme based on file extension and detection
-                var scheme = DetectUrnScheme(entry.Name);
-                urn = scheme + fullPath.Replace("\\", "/");
-
-                bool isNdfs = scheme == "ndfs://";
-
-                // If using file:// scheme, use detection results
-                if (!isNdfs && scheme == "file:///")
-                {
-                    if (detectionConfidences.TryGetValue("NDFS", out float ndfsConfidence) &&
-                        detectionConfidences.TryGetValue("BSD", out float bsdConfidence))
-                    {
-                        // Only use NDFS if confidence is very high AND significantly higher than BSD
-                        if (ndfsConfidence > 0.8f && ndfsConfidence > bsdConfidence + 0.2f)
-                        {
-                            isNdfs = true;
-                            urn = "ndfs://" + fullPath.Replace("\\", "/");
-                            _logger?.LogInfo($"Detected as NDFS with confidence {ndfsConfidence:F2} (BSD: {bsdConfidence:F2})");
-                        }
-                        else if (bsdConfidence > 0.5f)
-                        {
-                            urn = "bsd://" + fullPath.Replace("\\", "/");
-                            _logger?.LogInfo($"Detected as BSD with confidence {bsdConfidence:F2} (NDFS: {ndfsConfidence:F2})");
-                        }
-                    }
-                }
-
-                // Show info dialogs if needed
-                if (isNdfs)
-                {
-                    var settings = RetroCommanderSettings.Load();
-                    if (!settings.SkipNdfsInfoDialog)
-                    {
-                        bool? result = await ShowNdfsInfoDialogAsync(fullPath);
-                        if (result != true)
-                        {
-                            SetStatus("Mount cancelled");
-                            _isMounting = false;
-                            return;
-                        }
-                    }
-                }
-                // Note: BSD/FFS special-case handling removed - GenericMountDialog now shows detailed info for all filesystem types
-            }
-
-            _logger?.LogInfo($"Mounting disk image: {entry.Name} as {urn}");
+            _logger?.LogInfo($"Mounting disk image: {fileName} as {urn}");
 
             // Use MountManager to mount the volume
             var mountOptions = new MountOptions
             {
-                DisplayName = entry.Name,
+                DisplayName = fileName,
                 AutoNavigateToPath = false
             };
 
             var mountResult = await _mountManager.MountAsync(urn, mountOptions);
-
             if (mountResult.HasValue)
             {
                 var (mountPoint, panel) = mountResult.Value;
-
-                // Mount on the active panel (not opposite)
-                if (_leftPanelActive)
-                {
-                    _leftPanel = panel;
-                    await RefreshLeftPanelAsync();
-                    SetStatus($"✓ Mounted {entry.Name} on left panel");
-                }
-                else
-                {
-                    _rightPanel = panel;
-                    await RefreshRightPanelAsync();
-                    SetStatus($"✓ Mounted {entry.Name} on right panel");
-                }
-
-                // Add to sidebar Mounts section
-                AddMountToUi(
-                    mountPoint.DisplayName,
-                    mountPoint.Urn,
-                    mountPoint.FileSystemType);
+                await ShowMountedImageAsync(mountPoint, panel, toLeft, fileName);
+                return;
             }
-            else
-            {
-                // Mount failed - show generic dialog to allow retry with different settings
-                SetStatus($"✗ Mount failed: Could not mount {entry.Name}");
-                _logger?.LogError($"MountManager.MountAsync returned null for {urn}");
 
-                // Show generic dialog to allow user to override filesystem type
-                var retryDialog = new GenericMountDialog(fullPath, detectionConfidences);
-                var retryResult = await retryDialog.ShowDialog<bool>(this);
-
-                if (retryResult && !string.IsNullOrEmpty(retryDialog.SelectedUrn))
-                {
-                    // Retry with user-selected URN
-                    var retryMountResult = await _mountManager.MountAsync(retryDialog.SelectedUrn, mountOptions);
-                    if (retryMountResult.HasValue)
-                    {
-                        var (mountPoint, panel) = retryMountResult.Value;
-                        if (_leftPanelActive)
-                        {
-                            _leftPanel = panel;
-                            await RefreshLeftPanelAsync();
-                            SetStatus($"✓ Mounted {entry.Name} on left panel");
-                        }
-                        else
-                        {
-                            _rightPanel = panel;
-                            await RefreshRightPanelAsync();
-                            SetStatus($"✓ Mounted {entry.Name} on right panel");
-                        }
-                        AddMountToUi(
-                            mountPoint.DisplayName,
-                            mountPoint.Urn,
-                            mountPoint.FileSystemType);
-                    }
-                }
-            }
+            // Mount failed - show generic dialog to allow retry with different settings
+            SetStatus($"✗ Mount failed: Could not mount {fileName}");
+            _logger?.LogError($"MountManager.MountAsync returned null for {urn}");
+            await RetryMountWithDialogAsync(fullPath, detectionConfidences, toLeft);
         }
         catch (Exception ex)
         {
             SetStatus($"✗ Mount failed: {ex.Message}");
-            _logger?.LogError($"Failed to mount {entry.Name}", ex);
+            _logger?.LogError($"Failed to mount {fileName}", ex);
 
             // On mount failure, show generic dialog to allow retry
             try
             {
-                var sourcePanel = mountOnLeft ? _leftPanel : _rightPanel;
-                if (sourcePanel != null)
-                {
-                    var fullPath = Path.GetFullPath(Path.Combine(sourcePanel.CurrentPath, entry.Name));
-                    var detectionConfidences = DetectFilesystemTypes(fullPath);
-
-                    var retryDialog = new GenericMountDialog(fullPath, detectionConfidences);
-                    var retryResult = await retryDialog.ShowDialog<bool>(this);
-
-                    if (retryResult && !string.IsNullOrEmpty(retryDialog.SelectedUrn))
-                    {
-                        // Retry with user-selected URN
-                        var mountOptions = new MountOptions
-                        {
-                            DisplayName = entry.Name,
-                            AutoNavigateToPath = false
-                        };
-
-                        var retryMountResult = await _mountManager.MountAsync(retryDialog.SelectedUrn, mountOptions);
-                        if (retryMountResult.HasValue)
-                        {
-                            var (mountPoint, panel) = retryMountResult.Value;
-                            if (_leftPanelActive)
-                            {
-                                _leftPanel = panel;
-                                await RefreshLeftPanelAsync();
-                                SetStatus($"✓ Mounted {entry.Name} on left panel");
-                            }
-                            else
-                            {
-                                _rightPanel = panel;
-                                await RefreshRightPanelAsync();
-                                SetStatus($"✓ Mounted {entry.Name} on right panel");
-                            }
-                            AddMountToUi(
-                                mountPoint.DisplayName,
-                                mountPoint.Urn,
-                                mountPoint.FileSystemType);
-                        }
-                    }
-                }
+                await RetryMountWithDialogAsync(fullPath, DetectFilesystemTypes(fullPath), toLeft);
             }
             catch (Exception retryEx)
             {
@@ -2580,6 +2435,123 @@ File Viewer (F3):
         {
             _isMounting = false;
         }
+    }
+
+    // Picks the URN to mount an image with: the generic mount dialog when detection is unsure
+    // (or the disk needs a partition choice), otherwise the scheme from the file extension and
+    // the detection scores. Returns null when the user cancels.
+    private async Task<string?> ChooseMountUrnAsync(string fullPath, Dictionary<string, float> detectionConfidences)
+    {
+        // Determine if we should show generic mount dialog
+        float maxConfidence = 0f;
+        string detectedType = "";
+        Dictionary<string, float>.Enumerator scores = detectionConfidences.GetEnumerator();
+        while (scores.MoveNext())
+        {
+            if (scores.Current.Value > maxConfidence)
+            {
+                maxConfidence = scores.Current.Value;
+                detectedType = scores.Current.Key;
+            }
+        }
+        scores.Dispose();
+
+        // ALWAYS show dialog for FFS/BSD to allow partition selection
+        bool needsPartitionSelection = detectedType.StartsWith("FFS") || detectedType.StartsWith("BSD");
+        bool showGenericDialog = maxConfidence < 0.8f || detectionConfidences.Count == 0 || needsPartitionSelection;
+
+        if (showGenericDialog)
+        {
+            // Show generic mount dialog for uncertain detection
+            var dialog = new GenericMountDialog(fullPath, detectionConfidences);
+            bool result = await dialog.ShowDialog<bool>(this);
+            return result && !string.IsNullOrEmpty(dialog.SelectedUrn) ? dialog.SelectedUrn : null;
+        }
+
+        // Auto-detect URN scheme based on file extension and detection
+        string scheme = DetectUrnScheme(fullPath);
+        string urn = scheme + fullPath.Replace("\\", "/");
+        bool isNdfs = scheme == "ndfs://";
+
+        // If using file:// scheme, use detection results
+        if (!isNdfs && scheme == "file:///" &&
+            detectionConfidences.TryGetValue("NDFS", out float ndfsConfidence) &&
+            detectionConfidences.TryGetValue("BSD", out float bsdConfidence))
+        {
+            // Only use NDFS if confidence is very high AND significantly higher than BSD
+            if (ndfsConfidence > 0.8f && ndfsConfidence > bsdConfidence + 0.2f)
+            {
+                isNdfs = true;
+                urn = "ndfs://" + fullPath.Replace("\\", "/");
+                _logger?.LogInfo($"Detected as NDFS with confidence {ndfsConfidence:F2} (BSD: {bsdConfidence:F2})");
+            }
+            else if (bsdConfidence > 0.5f)
+            {
+                urn = "bsd://" + fullPath.Replace("\\", "/");
+                _logger?.LogInfo($"Detected as BSD with confidence {bsdConfidence:F2} (NDFS: {ndfsConfidence:F2})");
+            }
+        }
+
+        // Show info dialogs if needed
+        if (isNdfs && !RetroCommanderSettings.Load().SkipNdfsInfoDialog)
+        {
+            bool? result = await ShowNdfsInfoDialogAsync(fullPath);
+            if (result != true)
+            {
+                return null;
+            }
+        }
+        // Note: BSD/FFS special-case handling removed - GenericMountDialog now shows detailed info for all filesystem types
+
+        return urn;
+    }
+
+    // Shows the generic mount dialog after a failed mount so the user can pick another
+    // filesystem type, and mounts with the choice.
+    private async Task RetryMountWithDialogAsync(string fullPath, Dictionary<string, float> detectionConfidences, bool toLeft)
+    {
+        var retryDialog = new GenericMountDialog(fullPath, detectionConfidences);
+        bool retryResult = await retryDialog.ShowDialog<bool>(this);
+        if (!retryResult || string.IsNullOrEmpty(retryDialog.SelectedUrn))
+        {
+            return;
+        }
+
+        // Retry with user-selected URN
+        string fileName = Path.GetFileName(fullPath);
+        var mountOptions = new MountOptions
+        {
+            DisplayName = fileName,
+            AutoNavigateToPath = false
+        };
+
+        var retryMountResult = await _mountManager.MountAsync(retryDialog.SelectedUrn, mountOptions);
+        if (retryMountResult.HasValue)
+        {
+            var (mountPoint, panel) = retryMountResult.Value;
+            await ShowMountedImageAsync(mountPoint, panel, toLeft, fileName);
+        }
+    }
+
+    // Puts a freshly mounted image into the left or right panel, reports it on the status line
+    // and adds it to the sidebar's Mounts section.
+    private async Task ShowMountedImageAsync(MountPoint mountPoint, IFileSystemPanel panel, bool toLeft, string fileName)
+    {
+        if (toLeft)
+        {
+            _leftPanel = panel;
+            await RefreshLeftPanelAsync();
+            SetStatus($"✓ Mounted {fileName} on left panel");
+        }
+        else
+        {
+            _rightPanel = panel;
+            await RefreshRightPanelAsync();
+            SetStatus($"✓ Mounted {fileName} on right panel");
+        }
+
+        // Add to sidebar Mounts section
+        AddMountToUi(mountPoint.DisplayName, mountPoint.Urn, mountPoint.FileSystemType);
     }
 
     // Note: ShowBsdInfoDialogAsync removed - BSD/FFS details now shown in GenericMountDialog Details tab

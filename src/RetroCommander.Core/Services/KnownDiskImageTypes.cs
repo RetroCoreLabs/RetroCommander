@@ -25,21 +25,14 @@ namespace RetroCommander.Core.Services
     /// </remarks>
     public static class KnownDiskImageTypes
     {
-        private static readonly object s_lock = new object();
-        private static string[]? s_extensions;
-        private static Dictionary<string, string>? s_descriptions;
+        // Built once, on first use, from the same driver set the app mounts with.
+        // Lazy<T> gives a thread-safe one-time build with the result fully visible to every thread.
+        private static readonly Lazy<Catalogue> s_catalogue = new Lazy<Catalogue>(Catalogue.Build);
 
         /// <summary>
         /// Gets every known extension, lower case with the leading dot, sorted.
         /// </summary>
-        public static IReadOnlyList<string> Extensions
-        {
-            get
-            {
-                EnsureLoaded();
-                return s_extensions!;
-            }
-        }
+        public static IReadOnlyList<string> Extensions => s_catalogue.Value.Extensions;
 
         /// <summary>
         /// Checks whether a file name ends in one of the known extensions (case does not matter).
@@ -53,13 +46,7 @@ namespace RetroCommander.Core.Services
         public static bool IsKnown(string fileName)
         {
             string ext = Path.GetExtension(fileName);
-            if (ext.Length == 0)
-            {
-                return false;
-            }
-
-            EnsureLoaded();
-            return s_descriptions!.ContainsKey(ext);
+            return ext.Length > 0 && s_catalogue.Value.Descriptions.ContainsKey(ext);
         }
 
         /// <summary>
@@ -74,8 +61,7 @@ namespace RetroCommander.Core.Services
         /// </returns>
         public static string Describe(string extension)
         {
-            EnsureLoaded();
-            return s_descriptions!.TryGetValue(extension, out string? text) ? text : string.Empty;
+            return s_catalogue.Value.Descriptions.TryGetValue(extension, out string? text) ? text : string.Empty;
         }
 
         /// <summary>
@@ -86,9 +72,9 @@ namespace RetroCommander.Core.Services
         /// </returns>
         public static string[] GetFilePickerPatterns()
         {
-            IReadOnlyList<string> extensions = Extensions;
-            string[] patterns = new string[extensions.Count];
-            for (int i = 0; i < extensions.Count; i++)
+            string[] extensions = s_catalogue.Value.Extensions;
+            string[] patterns = new string[extensions.Length];
+            for (int i = 0; i < extensions.Length; i++)
             {
                 patterns[i] = "*" + extensions[i];
             }
@@ -96,21 +82,20 @@ namespace RetroCommander.Core.Services
             return patterns;
         }
 
-        // Builds the list once from the same driver set the app mounts with.
-        private static void EnsureLoaded()
+        // The extension list and, per extension, the descriptions of the formats that use it.
+        private sealed class Catalogue
         {
-            if (s_extensions != null)
+            public readonly string[] Extensions;
+            public readonly Dictionary<string, string> Descriptions;
+
+            private Catalogue(string[] extensions, Dictionary<string, string> descriptions)
             {
-                return;
+                Extensions = extensions;
+                Descriptions = descriptions;
             }
 
-            lock (s_lock)
+            public static Catalogue Build()
             {
-                if (s_extensions != null)
-                {
-                    return;
-                }
-
                 DriverFactory factory = DriverFactoryBuilder.CreateWithAllDrivers();
                 Dictionary<string, string> descriptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -133,8 +118,7 @@ namespace RetroCommander.Core.Services
                     }
                 }
 
-                s_descriptions = descriptions;
-                s_extensions = factory.GetKnownFileExtensions();
+                return new Catalogue(factory.GetKnownFileExtensions(), descriptions);
             }
         }
     }

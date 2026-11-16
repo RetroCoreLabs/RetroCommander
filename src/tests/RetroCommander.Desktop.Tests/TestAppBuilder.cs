@@ -21,6 +21,10 @@ namespace RetroCommander.Desktop.Tests
     {
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
-                .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+                // Real Skia text drawing instead of the headless stand-in: the main window uses the
+                // FluentIcons font, and the stand-in cannot load it ("Could not create glyphTypeface"),
+                // so a test that shows MainWindow crashes without this.
+                .UseSkia()
+                .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
     }
 }
