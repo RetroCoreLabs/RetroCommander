@@ -2291,13 +2291,11 @@ File Viewer (F3):
     }
     */ // END DISABLED CommandLine method
 
-    // Helper: Check if file is a disk image
+    // Helper: Check if file is a disk image. The extension list comes from the registered drivers
+    // (KnownDiskImageTypes), the same list the Settings file links and the Mount dialog use.
     private bool IsDiskImage(string filename)
     {
-        var ext = System.IO.Path.GetExtension(filename).ToLowerInvariant();
-        return ext == ".d64" || ext == ".d71" || ext == ".d81" ||
-               ext == ".img" || ext == ".ndfs" ||
-               ext == ".t64" || ext == ".vdk" || ext == ".dmk";
+        return KnownDiskImageTypes.IsKnown(filename);
     }
 
     // Helper: Detect URN scheme from file extension

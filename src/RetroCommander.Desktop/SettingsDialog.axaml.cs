@@ -46,6 +46,154 @@ namespace RetroCommander.Desktop
             PopulateViewerFont();
             PopulateMounts();
             PopulateFileTransfers();
+            PopulateFileAssociations();
+        }
+
+        // ---- File associations (Windows only) ------------------------------------------------
+
+        // One tick box per known extension; Tag holds the extension (".d64").
+        private readonly System.Collections.Generic.List<CheckBox> _associationChecks = new();
+
+        // Null when file links cannot be written (not Windows, or the exe path is unusable).
+        private RetroCommander.Core.Services.FileAssociationService? _associations;
+
+        // Fill the File associations section: one tick box per extension the drivers know,
+        // ticked when it is already linked to this exe.
+        private void PopulateFileAssociations()
+        {
+            if (!System.OperatingSystem.IsWindows())
+            {
+                FileAssociationsSection.IsVisible = false;
+                return;
+            }
+
+            // Environment.ProcessPath is the running exe. When the app is started through
+            // "dotnet RetroCommander.dll" it is dotnet.exe, which must never be linked.
+            string? exePath = System.Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exePath) ||
+                string.Equals(System.IO.Path.GetFileNameWithoutExtension(exePath), "dotnet", System.StringComparison.OrdinalIgnoreCase))
+            {
+                FileAssociationExePath.Text = "RetroCommander was not started from its own .exe, so there is no program to link files to. Start RetroCommander.exe to use this.";
+                AssociationTickAllButton.IsEnabled = false;
+                AssociationTickNoneButton.IsEnabled = false;
+                AssociationApplyButton.IsEnabled = false;
+                return;
+            }
+
+            _associations = RetroCommander.Core.Services.FileAssociationService.ForCurrentUser(exePath);
+            FileAssociationExePath.Text = "Files will open with: " + exePath;
+            RebuildAssociationList();
+        }
+
+        // (Re)creates the tick boxes from the current registry state.
+        [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+        private void RebuildAssociationList()
+        {
+            if (_associations == null)
+            {
+                return;
+            }
+
+            FileAssociationList.Children.Clear();
+            _associationChecks.Clear();
+
+            System.Collections.Generic.IReadOnlyList<string> extensions = RetroCommander.Core.Services.KnownDiskImageTypes.Extensions;
+            int linkedElsewhere = 0;
+            for (int i = 0; i < extensions.Count; i++)
+            {
+                string ext = extensions[i];
+                RetroCommander.Core.Services.FileAssociationState state = _associations.GetState(ext);
+
+                string label = ext + "  -  " + RetroCommander.Core.Services.KnownDiskImageTypes.Describe(ext);
+                if (state == RetroCommander.Core.Services.FileAssociationState.LinkedToOtherCopy)
+                {
+                    label += "  (linked to another copy of RetroCommander)";
+                    linkedElsewhere++;
+                }
+
+                CheckBox check = new CheckBox
+                {
+                    Content = label,
+                    Tag = ext,
+                    IsChecked = state != RetroCommander.Core.Services.FileAssociationState.NotLinked
+                };
+                _associationChecks.Add(check);
+                FileAssociationList.Children.Add(check);
+            }
+
+            if (linkedElsewhere > 0)
+            {
+                string? other = _associations.ReadRegisteredCommand();
+                FileAssociationStatus.Text = $"{linkedElsewhere} type(s) open another copy of RetroCommander ({other}). Press Apply to point them at this one.";
+            }
+        }
+
+        private void OnAssociationTickAllClick(object? sender, RoutedEventArgs e)
+        {
+            SetAllAssociationChecks(true);
+        }
+
+        private void OnAssociationTickNoneClick(object? sender, RoutedEventArgs e)
+        {
+            SetAllAssociationChecks(false);
+        }
+
+        private void SetAllAssociationChecks(bool value)
+        {
+            for (int i = 0; i < _associationChecks.Count; i++)
+            {
+                _associationChecks[i].IsChecked = value;
+            }
+        }
+
+        // Link every ticked extension to this exe and remove RetroCommander's link from every
+        // unticked one, then show what Windows now has.
+        private void OnAssociationApplyClick(object? sender, RoutedEventArgs e)
+        {
+            if (_associations == null || !System.OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
+            System.Collections.Generic.List<string> toLink = new();
+            System.Collections.Generic.List<string> toUnlink = new();
+            for (int i = 0; i < _associationChecks.Count; i++)
+            {
+                string ext = (string)_associationChecks[i].Tag!;
+                if (_associationChecks[i].IsChecked == true)
+                {
+                    toLink.Add(ext);
+                }
+                else
+                {
+                    toUnlink.Add(ext);
+                }
+            }
+
+            try
+            {
+                string[] all = new string[RetroCommander.Core.Services.KnownDiskImageTypes.Extensions.Count];
+                for (int i = 0; i < all.Length; i++)
+                {
+                    all[i] = RetroCommander.Core.Services.KnownDiskImageTypes.Extensions[i];
+                }
+
+                if (toLink.Count > 0)
+                {
+                    _associations.Link(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(toLink));
+                }
+
+                _associations.Unlink(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(toUnlink), all);
+
+                RebuildAssociationList();
+                FileAssociationStatus.Text = toLink.Count == 0
+                    ? "No disk image types open in RetroCommander now."
+                    : $"{toLink.Count} type(s) now open in RetroCommander. If Windows asks which program to use the first time, pick RetroCommander.";
+            }
+            catch (System.Exception ex)
+            {
+                FileAssociationStatus.Text = "Could not change the file links: " + ex.Message;
+            }
         }
 
         // Reflect the persisted auto-unmount + automount-mode preferences into the controls.

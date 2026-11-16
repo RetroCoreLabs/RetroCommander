@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="RetroCommander.Desktop.SettingsDialog"
         Title="Settings"
-        Width="520" Height="520"
+        Width="560" Height="640"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="{DynamicResource FluentBackgroundPrimaryBrush}">
@@ -135,6 +135,37 @@
 
                         <TextBlock Text="Restores NDFS-specific info from a companion .xat file when you copy files into an NDFS image, if one sits next to the source (usually from a previous export). The .xat file itself is used only as metadata for its paired file — it is not copied into the NDFS image on its own."
                                    Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- File associations section (Windows only; hidden elsewhere from code) -->
+                <Border x:Name="FileAssociationsSection" Classes="panel-border" Padding="16">
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="File associations" Classes="fluent-text-header"/>
+
+                        <TextBlock Text="Tick the disk image types that should open in RetroCommander when you double-click them in Explorer, then press Apply. The image is mounted in the left panel and the right panel opens its folder. This is for your Windows user only and needs no administrator rights."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock Text="Windows has the last word: if you have already picked another program for a type, Windows keeps that choice, and the first time you open a type Windows may ask which program to use. Several formats share .img and .dsk; RetroCommander reads the file to tell them apart."
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+
+                        <StackPanel x:Name="FileAssociationList" Spacing="4"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="AssociationTickAllButton" Content="Tick all" Click="OnAssociationTickAllClick"/>
+                            <Button x:Name="AssociationTickNoneButton" Content="Tick none" Click="OnAssociationTickNoneClick"/>
+                            <Button x:Name="AssociationApplyButton" Content="Apply" Classes="dialog-primary" Click="OnAssociationApplyClick"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="FileAssociationExePath"
+                                   Classes="fluent-text-secondary"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBlock x:Name="FileAssociationStatus"
+                                   Classes="fluent-text"
                                    TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
