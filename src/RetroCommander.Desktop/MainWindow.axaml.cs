@@ -232,6 +232,74 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Gets or sets a disk image file given on the command line. When set, the image is mounted in
+    /// the left panel at startup and the right panel opens the folder the image lives in.
+    /// </summary>
+    public string? StartupImagePath { get; set; }
+
+    // Mounts the command-line image on the left and shows its folder on the right.
+    // The extension is NOT checked here: any file the user opened with RetroCommander goes through
+    // the same filesystem detection as a double-click (every registered driver is scored, and the
+    // mount dialog appears when detection is unsure), so .img, .d64, .d81 and every other type the
+    // drivers understand all work.
+    private async Task OpenStartupImageAsync(string imagePath)
+    {
+        try
+        {
+            string fullPath = Path.GetFullPath(imagePath.Trim('"'));
+            if (!File.Exists(fullPath))
+            {
+                SetStatus($"✗ File not found: {fullPath}");
+                _logger?.LogWarning($"Startup image not found: {fullPath}");
+                return;
+            }
+
+            string? folder = Path.GetDirectoryName(fullPath);
+            if (string.IsNullOrEmpty(folder))
+            {
+                SetStatus($"✗ Invalid path: {fullPath}");
+                return;
+            }
+
+            // Both panels start in the image's folder. The right one stays there; the left one
+            // is then replaced by the mounted image.
+            await NavigateToPathAsync(folder, false);
+            await NavigateToPathAsync(folder, true);
+
+            if (_leftPanel == null)
+            {
+                return;
+            }
+
+            string fileName = Path.GetFileName(fullPath);
+            IFileSystemEntry? entry = null;
+            for (int i = 0; i < _leftPanel.Entries.Count; i++)
+            {
+                if (string.Equals(_leftPanel.Entries[i].Name, fileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    entry = _leftPanel.Entries[i];
+                    break;
+                }
+            }
+
+            if (entry == null)
+            {
+                SetStatus($"✗ {fileName} not listed in {folder}");
+                _logger?.LogWarning($"Startup image {fileName} not found in panel listing of {folder}");
+                return;
+            }
+
+            _leftPanelActive = true;
+            await MountDiskImageAsync(entry, true);
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Error opening {imagePath}: {ex.Message}");
+            _logger?.LogError($"Opening startup image {imagePath} failed", ex);
+        }
+    }
+
     private async Task InitializeDefaultPanelsAsync()
     {
         try
@@ -261,6 +329,11 @@ public partial class MainWindow : Window
 
             // Default panels are now in place; auto-unmount may start acting on navigation.
             _autoUnmountArmed = true;
+
+            if (!string.IsNullOrWhiteSpace(StartupImagePath))
+            {
+                await OpenStartupImageAsync(StartupImagePath);
+            }
         }
         catch (Exception ex)
         {
