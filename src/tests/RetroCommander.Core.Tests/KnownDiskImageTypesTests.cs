@@ -23,7 +23,7 @@ namespace RetroCommander.Core.Tests
             // The drivers registered by DriverFactoryBuilder.CreateWithAllDrivers, sorted, each once.
             string[] expected =
             {
-                ".bsd", ".crt", ".d64", ".d71", ".d81", ".dsk", ".ffs", ".flp", ".ima", ".img",
+                ".bsd", ".crt", ".d64", ".d71", ".d81", ".dmk", ".dsk", ".ffs", ".flp", ".ima", ".img",
                 ".jvc", ".nd", ".ndf", ".ndfs", ".nord", ".p00", ".prg", ".t64", ".tap", ".ufs",
                 ".vdk", ".vfd"
             };

@@ -34,6 +34,7 @@ namespace RetroCommander.Core.Services
             factory.Register(new TapDriverProvider());                  // Commodore TAP tape image
             factory.Register(new DragonDskDriverProvider());            // DragonDOS DSK
             factory.Register(new DragonVdkDriverProvider());            // DragonDOS VDK
+            factory.Register(new DragonDmkDriverProvider());            // DragonDOS DMK (track-level floppy image)
             factory.Register(new PcFloppyDriverProvider());             // PC Floppy (FAT12/16/32)
             factory.Register(new V7DriverProvider());                   // UNIX V7 filesystem (BSD 2.11)
             factory.Register(new FfsDriverProvider());                  // Berkeley Fast File System (FFS/UFS) for SunOS 3.4 / 4.2BSD
