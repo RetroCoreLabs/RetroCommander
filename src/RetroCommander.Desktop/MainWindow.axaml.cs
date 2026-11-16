@@ -2707,7 +2707,7 @@ File Viewer (F3):
     // Opens the Settings/Preferences dialog (theme picker lives here).
     private async void OnSettingsClick(object? sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsDialog();
+        var dialog = new SettingsDialog { Logger = _logger };
         await dialog.ShowDialog(this);
     }
 
