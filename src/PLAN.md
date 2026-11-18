@@ -55,6 +55,14 @@ Work, in order:
 5. Then repack RetroIO into RetroCore's local package folder (`Nuget/_shared/localfeed`, RetroIO's
    `src/eng/publish-local.ps1 -Feed`) so RetroCore's `disk.*` commands get `.vhd` and `.hdd` too.
 
+6. Convert between the formats (Ronny, 2026-11-19): raw `.img`/`.hdd` to fixed `.vhd` (append a
+   footer built per the spec: size, geometry taken from the MBR/BPB or given by the user, disk type
+   2, checksum, new UUID) and fixed `.vhd` to raw (drop the 512-byte footer). The conversion code
+   lives ONCE in RetroIO (`RetroIO.Storage.Local`), used by a RetroCommander menu entry ("Convert
+   disk image...") and by RetroCore (step 5 brings it in). Always writes a new file, never changes
+   the source; refuses by name when the target exists or the source is not a valid image. Tests:
+   raw -> vhd -> raw gives a byte-identical file; the VHD footer checks out; a FAT file written
+   before converting reads back after.
 Not in scope: dynamic and differencing VHD, VHDX, DOSBox-X's own formats. For swapping disks with
 DOSBox, raw `.img` with the same cylinders/heads/sectors on both sides is the safe format.
 
