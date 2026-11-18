@@ -30,6 +30,10 @@ Fixed VHD, the format RetroCore writes (Microsoft "Virtual Hard Disk Image Forma
   sectors per track 1), the disk type (2 = fixed, 3 = dynamic, 4 = differencing), a one's
   complement checksum of the footer bytes with the checksum field taken as zero, and a UUID.
 
+Priority (Ronny, 2026-11-19): raw `.img` is required (it works today and must keep working -
+every change below is tested against it first); `.hdd` is the same raw format under another name;
+fixed VHD is a plus, wanted in both RetroCommander and RetroCore, after raw is solid.
+
 Work, in order:
 1. RetroIO (the RetroIO repository, `src/RetroIO.Storage.Local`): a block device
    for fixed VHD that recognises the file by its footer (cookie `conectix` in the last 512 bytes,
