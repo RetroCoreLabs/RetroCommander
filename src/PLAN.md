@@ -63,6 +63,13 @@ Work, in order:
    the source; refuses by name when the target exists or the source is not a valid image. Tests:
    raw -> vhd -> raw gives a byte-identical file; the VHD footer checks out; a FAT file written
    before converting reads back after.
+   Where it is offered (Ronny, 2026-11-19, all three): in RetroCommander a right-click on a disk
+   image ("Convert to .vhd" / "Convert to .img") and a "Convert disk image..." menu item; in the
+   RetroCore desktop app a "Convert..." button beside each hard-disk drive on the settings window's
+   Media tab (only while the machine is off); and a `disk.convert <file> <new file>` command in
+   both RetroCore programs (scripts, .ini, retrocore-cli). Disk shape for raw -> VHD: read from the
+   partition table / boot sector and shown filled in, the user can change it; if it cannot be
+   worked out the user must fill it in.
 Not in scope: dynamic and differencing VHD, VHDX, DOSBox-X's own formats. For swapping disks with
 DOSBox, raw `.img` with the same cylinders/heads/sectors on both sides is the safe format.
 
