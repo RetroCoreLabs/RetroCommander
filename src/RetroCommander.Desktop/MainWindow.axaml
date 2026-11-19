@@ -20,6 +20,8 @@
                 <!-- ONE entry point for creating any image format (NDFS / PC / Commodore).
                      The old separate "New Commodore Disk..." item is now a format in this dialog. -->
                 <MenuItem Header="_New Image..." Click="OnF2NewImage" InputGesture="F2"/>
+                <!-- Raw (.img/.hdd) <-> fixed VHD (.vhd); always writes a new file. -->
+                <MenuItem Header="_Convert disk image..." Click="OnConvertDiskImageClick"/>
                 <!-- Disk Info is always available: NDFS panels get the rich NDFS window,
                      every other filesystem gets the generic VolumeInfo window. -->
                 <MenuItem Header="Disk _Info..." Click="OnDiskInfoClick"/>
@@ -127,12 +129,18 @@
                                                    CanUserReorder="True"/>
                             </DataGrid.Columns>
                             <DataGrid.ContextMenu>
-                                <ContextMenu>
+                                <ContextMenu Opening="OnLeftContextMenuOpening">
                                     <MenuItem Header="Open Read/_Write" Click="OnLeftOpenReadWriteClick"/>
                                     <MenuItem Header="Open Read _Only" Click="OnLeftOpenReadOnlyClick"/>
                                     <Separator/>
                                     <MenuItem Header="Properties" Click="OnLeftPropertiesClick"/>
                                     <MenuItem Header="Disk Info..." Click="OnLeftDiskInfoClick"/>
+                                    <!-- Shown by the Opening handler for a disk image on the local disk:
+                                         one or the other, by what the file holds (VHD footer or not). -->
+                                    <MenuItem Header="Convert to .vhd..." Name="LeftConvertToVhdMenuItem"
+                                              Click="OnLeftConvertClick" IsVisible="False"/>
+                                    <MenuItem Header="Convert to .img..." Name="LeftConvertToImgMenuItem"
+                                              Click="OnLeftConvertClick" IsVisible="False"/>
                                     <MenuItem Header="NDFS Disk Info..." Name="LeftNdfsDiskInfoMenuItem"
                                               Click="OnLeftNdfsDiskInfoClick" IsVisible="False"/>
                                 </ContextMenu>
@@ -222,12 +230,18 @@
                                                    CanUserReorder="True"/>
                             </DataGrid.Columns>
                             <DataGrid.ContextMenu>
-                                <ContextMenu>
+                                <ContextMenu Opening="OnRightContextMenuOpening">
                                     <MenuItem Header="Open Read/_Write" Click="OnRightOpenReadWriteClick"/>
                                     <MenuItem Header="Open Read _Only" Click="OnRightOpenReadOnlyClick"/>
                                     <Separator/>
                                     <MenuItem Header="Properties" Click="OnRightPropertiesClick"/>
                                     <MenuItem Header="Disk Info..." Click="OnRightDiskInfoClick"/>
+                                    <!-- Shown by the Opening handler for a disk image on the local disk:
+                                         one or the other, by what the file holds (VHD footer or not). -->
+                                    <MenuItem Header="Convert to .vhd..." Name="RightConvertToVhdMenuItem"
+                                              Click="OnRightConvertClick" IsVisible="False"/>
+                                    <MenuItem Header="Convert to .img..." Name="RightConvertToImgMenuItem"
+                                              Click="OnRightConvertClick" IsVisible="False"/>
                                     <MenuItem Header="NDFS Disk Info..." Name="RightNdfsDiskInfoMenuItem"
                                               Click="OnRightNdfsDiskInfoClick" IsVisible="False"/>
                                 </ContextMenu>

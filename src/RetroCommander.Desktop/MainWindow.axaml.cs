@@ -32,6 +32,7 @@ using RetroIO.Storage.Core.Utilities;
 using RetroIO.Storage.Local;
 using RetroIO.Storage.Local.BlockDevices;
 using RetroIO.Storage.Local.Drivers;
+using RetroIO.Storage.Local.Images;
 using RetroIO.Storage.Ndfs.BlockDevices;
 using RetroIO.Storage.Ndfs.Drivers;
 using RetroIO.Storage.Ndfs.FileSystems;
@@ -1291,6 +1292,97 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- Convert disk image (raw .img/.hdd <-> fixed VHD .vhd) ----------------------------------
+
+    // File menu: the selected file of the active panel when it is a file on the local disk,
+    // otherwise an empty dialog where the user picks the source.
+    private void OnConvertDiskImageClick(object? sender, RoutedEventArgs e)
+        => _ = ShowConvertDialogAsync(_leftPanelActive ? _leftPanel : _rightPanel, SelectedLocalFile(_leftPanelActive ? _leftPanel : _rightPanel));
+
+    private void OnLeftConvertClick(object? sender, RoutedEventArgs e)
+        => _ = ShowConvertDialogAsync(_leftPanel, SelectedLocalFile(_leftPanel));
+
+    private void OnRightConvertClick(object? sender, RoutedEventArgs e)
+        => _ = ShowConvertDialogAsync(_rightPanel, SelectedLocalFile(_rightPanel));
+
+    private void OnLeftContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+        => ShowConvertItems(_leftPanel, LeftConvertToVhdMenuItem, LeftConvertToImgMenuItem);
+
+    private void OnRightContextMenuOpening(object? sender, System.ComponentModel.CancelEventArgs e)
+        => ShowConvertItems(_rightPanel, RightConvertToVhdMenuItem, RightConvertToImgMenuItem);
+
+    /// <summary>
+    /// Shows "Convert to .img..." for a fixed VHD and "Convert to .vhd..." for a raw .img or .hdd on
+    /// the local disk; neither for anything else. The choice comes from what the file holds (a VHD
+    /// footer at the end or not), the same test the converter uses.
+    /// </summary>
+    private static void ShowConvertItems(IFileSystemPanel? panel, MenuItem toVhd, MenuItem toImg)
+    {
+        toVhd.IsVisible = false;
+        toImg.IsVisible = false;
+        string? path = SelectedLocalFile(panel);
+        if (path == null)
+        {
+            return;
+        }
+
+        bool isVhd;
+        try
+        {
+            isVhd = DiskImageConverter.IsFixedVhd(path);
+        }
+        catch (Exception ex) when (ex is InvalidDataException || ex is IOException || ex is UnauthorizedAccessException)
+        {
+            // A damaged or dynamic VHD, or a file that cannot be read: offer nothing.
+            return;
+        }
+
+        if (isVhd)
+        {
+            toImg.IsVisible = true;
+            return;
+        }
+
+        string ext = Path.GetExtension(path).ToLowerInvariant();
+        toVhd.IsVisible = ext == ".img" || ext == ".hdd";
+    }
+
+    // The full path of the panel's selected entry when it is a file on the local disk, else null.
+    private static string? SelectedLocalFile(IFileSystemPanel? panel)
+    {
+        if (panel?.SelectedEntry == null || panel.SelectedEntry.IsDirectory || panel is not NativeFileSystemPanel)
+        {
+            return null;
+        }
+
+        string full = Path.GetFullPath(Path.Combine(panel.CurrentPath, panel.SelectedEntry.Name));
+        return File.Exists(full) ? full : null;
+    }
+
+    private async Task ShowConvertDialogAsync(IFileSystemPanel? panel, string? sourcePath)
+    {
+        ConvertDiskImageDialog dialog = new ConvertDiskImageDialog(sourcePath);
+        bool done = await dialog.ShowDialog<bool>(this);
+        if (!done || dialog.CreatedPath == null)
+        {
+            return;
+        }
+
+        SetStatus($"✓ Converted to {Path.GetFileName(dialog.CreatedPath)}");
+        if (panel != null)
+        {
+            await panel.RefreshAsync();
+            if (ReferenceEquals(panel, _leftPanel))
+            {
+                await RefreshLeftPanelAsync();
+            }
+            else if (ReferenceEquals(panel, _rightPanel))
+            {
+                await RefreshRightPanelAsync();
+            }
+        }
+    }
+
     // File menu → uses the active panel; context menu → the specific panel.
     private void OnDiskInfoClick(object? sender, RoutedEventArgs e)
         => _ = ShowDiskInfoAsync(_leftPanelActive ? _leftPanel : _rightPanel);
@@ -2317,6 +2409,8 @@ File Viewer (F3):
             ".d81" => "d81://",
             ".ndfs" => "ndfs://",
             ".img" => "file:///", // IMG uses file provider with auto-detection (can be BSD, NDFS, etc.)
+            ".hdd" => "file:///", // HDD is a raw PC hard-disk image, the same bytes as .img
+            ".vhd" => "file:///", // fixed VHD: RetroIO recognises the footer at the end and hides it
             ".t64" => "file:///", // T64 uses file provider
             ".vdk" => "file:///", // VDK uses file provider with driver detection
             ".dmk" => "file:///", // DMK uses file provider with driver detection
