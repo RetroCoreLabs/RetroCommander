@@ -42,15 +42,14 @@ namespace RetroCommander.Desktop.Tests
         public void RawSource_ShowsShapeFromPartitionTable_AndWritesVhd()
         {
             string raw = Path.Combine(_dir, "DISK.img");
-            File.WriteAllBytes(raw, PcImageFactory.CreateBlankHardDisk(PcHddPreset.At20MB));
+            File.WriteAllBytes(raw, WithRealChs(PcImageFactory.CreateBlankHardDisk(PcHddPreset.At20MB)));
 
             ConvertDiskImageDialog dialog = new ConvertDiskImageDialog(raw);
             Assert.That(dialog.GeometryPanel.IsVisible, Is.True);
             Assert.That(dialog.TargetInput.Text, Is.EqualTo(Path.Combine(_dir, "DISK.vhd")));
-            DiskImageConverter.TryDetectGeometry(raw, out DiskGeometry expected);
-            Assert.That(dialog.CylindersInput.Text, Is.EqualTo(expected.Cylinders.ToString()));
-            Assert.That(dialog.HeadsInput.Text, Is.EqualTo(expected.Heads.ToString()));
-            Assert.That(dialog.SectorsInput.Text, Is.EqualTo(expected.SectorsPerTrack.ToString()));
+            Assert.That(dialog.CylindersInput.Text, Is.EqualTo("615"));
+            Assert.That(dialog.HeadsInput.Text, Is.EqualTo("4"));
+            Assert.That(dialog.SectorsInput.Text, Is.EqualTo("17"));
 
             // The user changes the shape; the changed shape is what goes into the footer.
             dialog.CylindersInput.Text = "600";
@@ -66,7 +65,7 @@ namespace RetroCommander.Desktop.Tests
             string raw = Path.Combine(_dir, "DISK.hdd");
             File.WriteAllBytes(raw, PcImageFactory.CreateBlankHardDisk(PcHddPreset.At20MB));
             string vhd = Path.Combine(_dir, "DISK.vhd");
-            DiskImageConverter.RawToFixedVhd(raw, vhd, null);
+            DiskImageConverter.RawToFixedVhd(raw, vhd, new DiskGeometry(615, 4, 17));
 
             ConvertDiskImageDialog dialog = new ConvertDiskImageDialog(vhd);
             Assert.That(dialog.GeometryPanel.IsVisible, Is.False);
@@ -79,7 +78,7 @@ namespace RetroCommander.Desktop.Tests
         public void ExistingTarget_IsRefusedAndShown()
         {
             string raw = Path.Combine(_dir, "DISK.img");
-            File.WriteAllBytes(raw, PcImageFactory.CreateBlankHardDisk(PcHddPreset.At20MB));
+            File.WriteAllBytes(raw, WithRealChs(PcImageFactory.CreateBlankHardDisk(PcHddPreset.At20MB)));
             File.WriteAllBytes(Path.Combine(_dir, "DISK.vhd"), new byte[] { 9 });
 
             ConvertDiskImageDialog dialog = new ConvertDiskImageDialog(raw);
@@ -104,6 +103,20 @@ namespace RetroCommander.Desktop.Tests
             dialog.HeadsInput.Text = "1";
             dialog.SectorsInput.Text = "16";
             Assert.That(dialog.TryConvert(), Is.True, dialog.ProblemText.Text);
+        }
+
+        // The test disk factory writes the "use LBA" filler (FE FF FF) as the partition's start and
+        // end positions, which says nothing about the shape. Real disks carry the real positions;
+        // these are the ones for 615/4/17 (end cylinder 614 = 0x266, head 3, sector 17).
+        private static byte[] WithRealChs(byte[] disk)
+        {
+            disk[446 + 1] = 1;
+            disk[446 + 2] = 1;
+            disk[446 + 3] = 0;
+            disk[446 + 5] = 3;
+            disk[446 + 6] = 0x91;
+            disk[446 + 7] = 0x66;
+            return disk;
         }
     }
 }
