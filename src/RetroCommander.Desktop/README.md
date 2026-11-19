@@ -57,6 +57,7 @@ it is wrong.
 | **New Image** | Create a blank image |
 | **Create NDFS Image** | A blank NDFS pack, with initial users |
 | **Create PC Image** | A blank FAT floppy or hard disk |
+| **Convert Disk Image** | A PC hard disk from raw (`.img`, `.hdd`) to fixed VHD (`.vhd`) or back, always into a new file. File menu "Convert disk image...", or right-click an image: "Convert to .vhd..." / "Convert to .img...". For a VHD the disk shape is read from the partition table or boot sector and can be changed |
 | **Disk Info** | Volume information for any mounted volume |
 | **NDFS Disk Info** | The NDFS-specific view |
 | **NDFS User Info** | Users, quotas and usage on an NDFS pack |

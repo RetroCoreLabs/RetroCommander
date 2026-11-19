@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.ConvertDiskImageDialog"
+        Title="Convert Disk Image"
+        Width="600"
+        MinWidth="520"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        SizeToContent="Height"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <!-- Converts a PC hard-disk image between raw (.img/.hdd) and fixed VHD (.vhd). The direction
+         comes from the source file's contents (a VHD footer at the end, or none). Always writes a
+         new file; the source is never changed. -->
+    <Grid RowDefinitions="Auto,Auto,Auto" Margin="15">
+        <TextBlock Grid.Row="0" Text="Convert a PC hard-disk image between raw (.img, .hdd) and fixed VHD (.vhd)"
+                   FontSize="14" FontWeight="Bold" Margin="0,0,0,15" TextWrapping="Wrap"/>
+
+        <StackPanel Grid.Row="1" Spacing="10">
+            <TextBlock Text="Disk image to convert:" FontWeight="SemiBold"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="SourceInput" x:FieldModifier="internal" Grid.Column="0" Classes="fluent-textbox"
+                         Watermark="Select a disk image..."/>
+                <Button Grid.Column="1" Content="Browse..." Click="OnBrowseSourceClick"
+                        Classes="fluent-button" Margin="5,0,0,0" Padding="15,5"/>
+            </Grid>
+            <TextBlock Name="DirectionText" x:FieldModifier="internal" Text=""
+                       Foreground="{DynamicResource FluentTextSecondaryBrush}" TextWrapping="Wrap"/>
+
+            <TextBlock Text="New file:" FontWeight="SemiBold"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="TargetInput" x:FieldModifier="internal" Grid.Column="0" Classes="fluent-textbox"
+                         Watermark="Where to write the new image..."/>
+                <Button Grid.Column="1" Content="Browse..." Click="OnBrowseTargetClick"
+                        Classes="fluent-button" Margin="5,0,0,0" Padding="15,5"/>
+            </Grid>
+
+            <!-- Only for raw to VHD: the shape recorded in the VHD footer. Filled in from the
+                 partition table or boot sector; the user can change it, and must fill it in when
+                 the disk does not say. -->
+            <StackPanel Name="GeometryPanel" x:FieldModifier="internal" Spacing="6">
+                <TextBlock Text="Disk shape (written into the VHD footer):" FontWeight="SemiBold"/>
+                <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*" >
+                    <TextBlock Grid.Column="0" Text="Cylinders" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Grid.Column="1" Name="CylindersInput" x:FieldModifier="internal" Classes="fluent-textbox" Margin="0,0,12,0"/>
+                    <TextBlock Grid.Column="2" Text="Heads" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Grid.Column="3" Name="HeadsInput" x:FieldModifier="internal" Classes="fluent-textbox" Margin="0,0,12,0"/>
+                    <TextBlock Grid.Column="4" Text="Sectors per track" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox Grid.Column="5" Name="SectorsInput" x:FieldModifier="internal" Classes="fluent-textbox"/>
+                </Grid>
+                <TextBlock Name="GeometryNote" x:FieldModifier="internal" Text="" FontSize="11"
+                           Foreground="{DynamicResource FluentTextSecondaryBrush}" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBlock Name="ProblemText" x:FieldModifier="internal" Text="" TextWrapping="Wrap"
+                       Foreground="{DynamicResource FluentErrorTextBrush}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,15,0,0">
+            <Button Name="ConvertButton" Content="Convert" Click="OnConvertClick"
+                    IsDefault="True" Classes="dialog-primary"/>
+            <Button Content="Cancel" Click="OnCancelClick" IsCancel="True" Classes="dialog-secondary"/>
+        </StackPanel>
+    </Grid>
+</Window>

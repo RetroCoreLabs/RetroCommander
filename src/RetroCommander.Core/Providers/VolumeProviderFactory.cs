@@ -12,6 +12,7 @@ using RetroCommander.Core.Managers;
 using RetroIO.Storage.Core;
 using RetroIO.Storage.Core.Utilities;
 using RetroIO.Storage.Local;
+using RetroIO.Storage.Local.Images;
 
 namespace RetroCommander.Core.Providers;
 
@@ -238,12 +239,12 @@ public class VolumeProviderFactory : IVolumeProviderFactory
     ///  - <see cref="MountMode.Auto"/> — try read-write first (so edits persist), fall back to
     ///    read-only on a read-only file/media or sharing conflict. Historical behaviour.
     /// </remarks>
-    private static (FileStream stream, bool readOnly) OpenImageStream(string path, MountMode mode)
+    private static (Stream stream, bool readOnly) OpenImageStream(string path, MountMode mode)
     {
         if (mode == MountMode.ReadOnly)
         {
             var ro = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            return (ro, true);
+            return (DiskBytes(ro, path), true);
         }
 
         if (mode == MountMode.ReadWrite)
@@ -252,7 +253,7 @@ public class VolumeProviderFactory : IVolumeProviderFactory
             {
                 // FileShare.Read lets other readers peek but blocks a second writer.
                 var rw = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
-                return (rw, false);
+                return (DiskBytes(rw, path), false);
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
             {
@@ -267,13 +268,30 @@ public class VolumeProviderFactory : IVolumeProviderFactory
         try
         {
             var rw = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
-            return (rw, false);
+            return (DiskBytes(rw, path), false);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException)
         {
             // Could not get write access: fall back to a read-only mount rather than failing.
             var ro = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            return (ro, true);
+            return (DiskBytes(ro, path), true);
+        }
+    }
+
+    // The disk bytes of an opened image: the file itself for a raw image, or the file without its
+    // 512-byte footer for a fixed VHD (recognised by the footer, not the name; RetroIO's
+    // DiskImageFile). The footer can then never be written. A VHD that cannot be used (damaged,
+    // dynamic, differencing) is refused with the reason, and the file is closed again.
+    private static Stream DiskBytes(FileStream file, string path)
+    {
+        try
+        {
+            return DiskImageFile.Wrap(file, path);
+        }
+        catch
+        {
+            file.Dispose();
+            throw;
         }
     }
 

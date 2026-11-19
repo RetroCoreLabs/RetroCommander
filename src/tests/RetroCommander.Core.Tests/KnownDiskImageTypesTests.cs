@@ -23,9 +23,9 @@ namespace RetroCommander.Core.Tests
             // The drivers registered by DriverFactoryBuilder.CreateWithAllDrivers, sorted, each once.
             string[] expected =
             {
-                ".bsd", ".crt", ".d64", ".d71", ".d81", ".dmk", ".dsk", ".ffs", ".flp", ".ima", ".img",
-                ".jvc", ".nd", ".ndf", ".ndfs", ".nord", ".p00", ".prg", ".t64", ".tap", ".ufs",
-                ".vdk", ".vfd"
+                ".bsd", ".crt", ".d64", ".d71", ".d81", ".dmk", ".dsk", ".ffs", ".flp", ".hdd", ".ima",
+                ".img", ".jvc", ".nd", ".ndf", ".ndfs", ".nord", ".p00", ".prg", ".t64", ".tap", ".ufs",
+                ".vdk", ".vfd", ".vhd"
             };
             Assert.That(KnownDiskImageTypes.Extensions, Is.EqualTo(expected));
         }
