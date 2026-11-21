@@ -40,15 +40,15 @@ jobs:
     name: Build DocFX site
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: RetroCoreLabs/RetroIO
           ref: ${{ env.RETROIO_REF }}
           path: retroio
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: src/global.json
       - name: Pack RetroIO into a feed folder
@@ -67,7 +67,7 @@ jobs:
       - name: Build site
         working-directory: src
         run: docfx docfx/docfx.json --warningsAsErrors
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: src/docfx/_site
 
@@ -81,4 +81,4 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
