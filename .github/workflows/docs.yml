@@ -16,6 +16,11 @@ on:
     paths:
       - 'src/**'
       - '.github/workflows/docs.yml'
+      # The guides the site publishes from outside src/ (see src/docfx/docfx.json).
+      - 'README.md'
+      - 'LICENSE'
+      - '.github/CONTRIBUTING.md'
+      - '.github/SECURITY.md'
   workflow_dispatch:
 
 permissions:
