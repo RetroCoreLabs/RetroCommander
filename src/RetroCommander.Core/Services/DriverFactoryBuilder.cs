@@ -38,6 +38,10 @@ namespace RetroCommander.Core.Services
             factory.Register(new PcFloppyDriverProvider());             // PC Floppy (FAT12/16/32)
             factory.Register(new V7DriverProvider());                   // UNIX V7 filesystem (BSD 2.11)
             factory.Register(new FfsDriverProvider());                  // Berkeley Fast File System (FFS/UFS) for SunOS 3.4 / 4.2BSD
+            // CP/M: C128/C64 on D64/D71/D81, Kaypro .img, Amstrad CPC .dsk, CP/M-86 PC floppies.
+            // It shares extensions with the Commodore, Dragon and PC floppy drivers; the
+            // DriverFactory picks by the confidence each driver gives the image's own bytes.
+            factory.Register(new CpmDriverProvider());
 
             return factory;
         }

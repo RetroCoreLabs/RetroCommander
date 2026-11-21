@@ -24,7 +24,7 @@ namespace RetroCommander.Core.Tests
             string[] expected =
             {
                 ".bsd", ".crt", ".d64", ".d71", ".d81", ".dmk", ".dsk", ".ffs", ".flp", ".hdd", ".ima",
-                ".img", ".jvc", ".nd", ".ndf", ".ndfs", ".nord", ".p00", ".prg", ".t64", ".tap", ".ufs",
+                ".imd", ".img", ".jvc", ".nd", ".ndf", ".ndfs", ".nord", ".p00", ".prg", ".t64", ".tap", ".ufs",
                 ".vdk", ".vfd", ".vhd"
             };
             Assert.That(KnownDiskImageTypes.Extensions, Is.EqualTo(expected));
@@ -46,8 +46,12 @@ namespace RetroCommander.Core.Tests
         {
             string text = KnownDiskImageTypes.Describe(".img");
 
-            // .img is listed by the PC floppy, V7/BSD and FFS drivers.
-            Assert.That(text.Split("; ").Length, Is.EqualTo(3), text);
+            // .img is listed by the PC floppy, V7/BSD, FFS and CP/M drivers. The CP/M description
+            // has "; " inside its own brackets, so check each format by name rather than count parts.
+            Assert.That(text, Does.Contain("PC floppy"), text);
+            Assert.That(text, Does.Contain("UNIX V7"), text);
+            Assert.That(text, Does.Contain("Fast File System"), text);
+            Assert.That(text, Does.Contain("CP/M"), text);
         }
 
         [Test]

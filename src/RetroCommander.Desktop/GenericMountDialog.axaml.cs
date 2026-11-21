@@ -476,15 +476,9 @@ public partial class GenericMountDialog : Window
             // Initialize metadata service if not already done
             if (_metadataService == null)
             {
-                var driverFactory = new DriverFactory();
-                driverFactory.Register(new V7DriverProvider());
-                driverFactory.Register(new FfsDriverProvider());
-                driverFactory.Register(new NdfsDriverProvider());
-                driverFactory.Register(new CommodoreDiskDriverProvider());
-                driverFactory.Register(new DragonVdkDriverProvider());
-                driverFactory.Register(new DragonDskDriverProvider());
-                driverFactory.Register(new PcFloppyDriverProvider());
-                driverFactory.Register(new T64DriverProvider());
+                // The same driver list as the rest of the application, so the Details tab
+                // knows every format the panels can mount (it had its own, shorter copy).
+                var driverFactory = RetroCommander.Core.Services.DriverFactoryBuilder.CreateWithAllDrivers();
 
                 _metadataService = new FileSystemMetadataService(driverFactory);
             }
