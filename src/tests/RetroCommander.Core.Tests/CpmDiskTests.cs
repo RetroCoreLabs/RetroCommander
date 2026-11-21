@@ -42,6 +42,11 @@ namespace RetroCommander.Core.Tests
         [TestCase("kaypro/cpm22-rom149.img")]
         [TestCase("amstrad/Deadline_1982_Infocom_cpm_version.dsk")]
         [TestCase("cpm86/CPM86_10.IMG")]
+        [TestCase("cpm86/CPM86_10.IMD")]
+        [TestCase("osborne/OCC1-001.IMD")]
+        [TestCase("tiki100/tiko_kjerne_v4.01.dsk")]
+        [TestCase("tiki100/AR-games.dsk")]
+        [TestCase("tiki100/ar-games-200k.dsk")]
         public async Task CpmImage_OpensAsCpm_AndListsFiles(string relative)
         {
             string path = CpmImage(relative);
