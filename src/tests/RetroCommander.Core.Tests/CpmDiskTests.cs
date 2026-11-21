@@ -48,6 +48,8 @@ namespace RetroCommander.Core.Tests
         [TestCase("tiki100/AR-games.dsk")]
         [TestCase("tiki100/ar-games-200k.dsk")]
         [TestCase("tiki100/FD0054.dsk")]
+        [TestCase("tiki100/HD0.dsk")]
+        [TestCase("tiki100/HD1.dsk")]
         public async Task CpmImage_OpensAsCpm_AndListsFiles(string relative)
         {
             string path = CpmImage(relative);
