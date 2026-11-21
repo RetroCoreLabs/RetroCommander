@@ -84,3 +84,16 @@
     margin-right: 0;
   }
 }
+
+/* Contrast (WCAG AA, 4.5:1), measured with check-contrast.js:
+   - the template's secondary grey (108,117,125) on the dark background is 3.3:1; it is used for
+     the footer, the "Namespace / Assembly" lines on every API page and the in-page contents;
+   - inline code (214,51,132) inside a warning or caution box is 3.4:1 and 4.1:1. */
+[data-bs-theme="dark"] {
+  --bs-secondary-rgb: 173, 181, 189;
+  --bs-secondary-color: rgb(173, 181, 189);
+}
+
+[data-bs-theme="light"] .alert code {
+  color: #8a1c4f;
+}

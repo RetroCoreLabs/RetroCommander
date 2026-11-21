@@ -36,7 +36,7 @@ a format bug shows up first.
 
 | Application | What it is | README |
 |---|---|---|
-| `RetroCommander` | The file manager | [README](src/RetroCommander.Desktop/README.md) |
+| `RetroCommander` | The file manager | [README](https://github.com/RetroCoreLabs/RetroCommander/blob/main/src/RetroCommander.Desktop/README.md) |
 
 ---
 
