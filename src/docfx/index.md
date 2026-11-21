@@ -32,6 +32,10 @@ Console.WriteLine($"{panel.DisplayName} ({panel.FileSystemType}), read-only: {pa
 
 ## Where to go next
 
+- [Overview](../../README.md) - what it does, the formats it reads, opening a disk image from
+  Explorer, and copying between filesystems that do not agree.
+- [The application](../RetroCommander.Desktop/README.md) - the windows and dialogs, and opening an
+  unknown image.
 - [API reference](api/index.md) - every namespace, type and member.
 - [The repository](https://github.com/RetroCoreLabs/RetroCommander) - source, releases and the
   README.

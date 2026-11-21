@@ -1,5 +1,15 @@
 - name: Home
   href: index.md
+- name: Guide
+  items:
+  - name: Overview
+    href: ../../README.md
+  - name: The application
+    href: ../RetroCommander.Desktop/README.md
+  - name: Contributing
+    href: ../../.github/CONTRIBUTING.md
+  - name: Security
+    href: ../../.github/SECURITY.md
 - name: API Reference
   href: api/
   topicHref: api/index.md

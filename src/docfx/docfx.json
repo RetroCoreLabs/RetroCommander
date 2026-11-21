@@ -28,10 +28,13 @@
     "content": [
       { "files": [ "api/**.yml", "api/index.md" ] },
       { "files": [ "*.md", "toc.yml" ], "exclude": [ "README.md" ] },
-      { "files": [ "docs/**.md", "docs/**/toc.yml" ] }
+      { "files": [ "docs/**.md", "docs/**/toc.yml" ] },
+      { "files": [ "README.md", ".github/CONTRIBUTING.md", ".github/SECURITY.md" ], "src": "../..", "dest": "" },
+      { "files": [ "RetroCommander.Desktop/README.md" ], "src": "..", "dest": "" }
     ],
     "resource": [
       { "files": [ "images/**" ] },
+      { "files": [ "LICENSE" ], "src": "../..", "dest": "" },
       { "files": [ "Assets/RetroCommander.svg", "Assets/RetroCommander.ico" ], "src": "../RetroCommander.Desktop", "dest": "images" }
     ],
     "output": "_site",
