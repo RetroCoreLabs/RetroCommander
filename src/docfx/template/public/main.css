@@ -97,3 +97,9 @@
 [data-bs-theme="light"] .alert code {
   color: #8a1c4f;
 }
+
+/* Light code blocks: the highlighter's attribute colour (43,145,175), as in
+   [ExcludeFromCodeCoverage] on the window pages, is 3.3:1 on the code background. */
+[data-bs-theme="light"] .hljs-meta {
+  color: #1c6b85;
+}
