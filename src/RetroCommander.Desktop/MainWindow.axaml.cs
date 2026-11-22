@@ -885,6 +885,15 @@ public partial class MainWindow : Window
         return plus >= 0 ? text.Substring(0, plus) : text;
     }
 
+    private async void OnSupportedFormatsClick(object? sender, RoutedEventArgs e)
+    {
+        // Every format the drivers handle, built from the drivers themselves.
+        SupportedFormatsWindow window = new SupportedFormatsWindow();
+        if (this.TryFindResource("FluentBackgroundPrimaryBrush", out var bgVal) && bgVal is Avalonia.Media.IBrush bg)
+            window.Background = bg;
+        await window.ShowDialog(this);
+    }
+
     private async void OnAboutClick(object? sender, RoutedEventArgs e)
     {
         var about = new Window
@@ -921,7 +930,8 @@ public partial class MainWindow : Window
 
         var body = new TextBlock
         {
-            Text = "Built with RetroCommander.Core\nSupports NDFS, D64, D71, D81, BSD/FFS and more!",
+            // The full list is Help > Supported formats, built from the drivers; no list here to go stale.
+            Text = "Built with RetroCommander.Core and RetroIO\nHelp > Supported formats lists every disk format.",
             TextAlignment = Avalonia.Media.TextAlignment.Center,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center

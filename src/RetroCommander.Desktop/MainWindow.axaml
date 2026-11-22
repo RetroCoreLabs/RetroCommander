@@ -35,6 +35,7 @@
             <MenuItem Header="_Help">
                 <MenuItem Header="_Help" Click="OnF1Help" InputGesture="F1"/>
                 <MenuItem Header="_Log" Click="OnLogClick"/>
+                <MenuItem Header="Supported _formats..." Click="OnSupportedFormatsClick"/>
                 <MenuItem Header="_About" Click="OnAboutClick"/>
             </MenuItem>
         </Menu>
