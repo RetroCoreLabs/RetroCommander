@@ -224,9 +224,18 @@ declares nothing gets no `.xat`. The window does exactly the same.
 A copy between two disks of the same kind keeps every property; between different kinds, only
 what the target understands.
 
-**Today:** the NDFS driver declares property names its files do not carry, so ND files get no
-`.xat` until that is fixed in RetroIO, and the other drivers declare no properties yet
-(`src/BUGS.md`, B2).
+Formats that keep file properties: ND (owner, access bits, dates), Commodore (file type, locked),
+CP/M (user, read-only, system, archive), PC/FAT (read-only, hidden, system, archive), Dragon
+DOS, Dragon DECB, OS-9, and Unix (BSD V7, FFS: mode, owner, group, which are kept in the `.xat` but
+not written back). T64, PRG/P00, CRT and TAP files keep none, so they get no `.xat`. A Commodore
+file copied off a disk gets, for example:
+
+```json
+{
+  "cbm.file_type": "PRG",
+  "cbm.locked": false
+}
+```
 
 ## Copy conversions
 
@@ -293,9 +302,6 @@ retrocommander-cli mkdir boot.img:/BIN
 retrocommander-cli copy-in tool.com boot.img:/BIN
 ```
 
-Files in a folder are listed with the wrong path today, so deleting or renaming them there fails
-(`src/BUGS.md`, B3).
-
 **A raw hard disk to a VHD and back**
 
 ```powershell
@@ -358,5 +364,4 @@ error: this command changes the disk, and --ro was given
 - **PETSCII art in a Commodore directory listing.** It waits on RetroIO: the functions that write
   raw directory names exist only on the Commodore driver class, and the tool names no format, so
   they are needed behind a general interface with their own metadata first.
-- **Known defects** are in `src/BUGS.md`: B2 (no `.xat` for any format yet), B3 (files in a FAT
-  folder), B4 (a test that failed once).
+- **Known defects** are in `src/BUGS.md`.
