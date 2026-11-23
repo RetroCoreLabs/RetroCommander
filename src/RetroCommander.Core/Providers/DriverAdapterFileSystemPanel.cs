@@ -170,7 +170,8 @@ public class DriverAdapterFileSystemPanel : IFileSystemPanel, IDisposable
     /// Makes <paramref name="path"/> the current path, selects the first entry, and lists it.
     /// </summary>
     /// <param name="path">
-    /// The path inside the volume to show. It is used as given, without checks.
+    /// The path inside the volume to show. It is tidied first: backslashes become <c>/</c>, doubled
+    /// and trailing slashes go, and it starts with <c>/</c>; an empty path is the root.
     /// </param>
     /// <param name="cancellationToken">
     /// Passed on to <see cref="RefreshAsync"/>.
@@ -178,9 +179,13 @@ public class DriverAdapterFileSystemPanel : IFileSystemPanel, IDisposable
     /// <returns>
     /// A task that completes when the new listing is loaded.
     /// </returns>
+    /// <remarks>
+    /// New files are named current path + "/" + name, so a path kept as typed ("/SYSTEM/") gave
+    /// "/SYSTEM//NAME", and the NDFS driver stored that file under the name "/NAME" (2026-11-23).
+    /// </remarks>
     public Task NavigateAsync(string path, CancellationToken cancellationToken = default)
     {
-        _currentPath = path;
+        _currentPath = Tidy(path);
         _selectedIndex = 0;
         return RefreshAsync(cancellationToken);
     }
@@ -425,6 +430,29 @@ public class DriverAdapterFileSystemPanel : IFileSystemPanel, IDisposable
         // Delegates to the driver's rename (drivers without rename support throw NotSupported).
         _driver.RenameFile(entry.FullPath, newName);
         return RefreshAsync(cancellationToken);
+    }
+
+    // One spelling of a folder path: "/" between parts, none doubled or at the end, "/" first.
+    // "\SYSTEM\SUB\" and "//SYSTEM//SUB" both give "/SYSTEM/SUB"; "", "/" and "//" give "/".
+    private static string Tidy(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return "/";
+
+        var sb = new System.Text.StringBuilder(path.Length + 1);
+        for (int i = 0; i < path.Length; i++)
+        {
+            char c = path[i] == '\\' ? '/' : path[i];
+            if (c == '/' && (sb.Length == 0 || sb[sb.Length - 1] == '/'))
+                continue;
+            if (sb.Length == 0)
+                sb.Append('/');
+            sb.Append(c);
+        }
+
+        if (sb.Length > 1 && sb[sb.Length - 1] == '/')
+            sb.Length--;
+        return sb.Length == 0 ? "/" : sb.ToString();
     }
 
     /// <summary>
