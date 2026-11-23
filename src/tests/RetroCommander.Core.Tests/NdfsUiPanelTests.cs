@@ -295,7 +295,7 @@ namespace RetroCommander.Core.Tests
             Assert.That(result.Success, Is.True, $"copy must succeed: {result.ErrorMessage}");
             Assert.That(File.Exists(Path.Combine(nativeDir, "SIDECAR.TXT")), Is.True);
 
-            string xatPath = Path.Combine(nativeDir, "SIDECAR.xat");
+            string xatPath = Path.Combine(nativeDir, "SIDECAR.TXT.xat");
             Assert.That(File.Exists(xatPath), Is.True, "a .xat sidecar must be written next to the exported file");
             Assert.That(File.ReadAllText(xatPath), Does.Contain("ndfs."),
                 "the sidecar must contain real NDFS-prefixed metadata keys");
@@ -346,7 +346,7 @@ namespace RetroCommander.Core.Tests
             uint defaultAccessBits = originalEntry!.Properties.GetProperty<uint>(
                 RetroIO.Storage.Ndfs.PropertyBags.NdfsPropertyBagKeys.AccessBits);
 
-            // Export to a native folder — produces ROUND.TXT + ROUND.xat.
+            // Export to a native folder — produces ROUND.TXT + ROUND.TXT.xat.
             string nativeDir = Path.Combine(_testDir, "roundtrip-native");
             Directory.CreateDirectory(nativeDir);
             NativeFileSystemPanel nativePanel = new NativeFileSystemPanel("native", nativeDir);
@@ -356,7 +356,7 @@ namespace RetroCommander.Core.Tests
                 new CopyOptions { Overwrite = true, PreserveNdfsMetadataOnExport = true });
             Assert.That(exportResult.Success, Is.True, $"export must succeed: {exportResult.ErrorMessage}");
 
-            string xatPath = Path.Combine(nativeDir, "ROUND.xat");
+            string xatPath = Path.Combine(nativeDir, "ROUND.TXT.xat");
             Assert.That(File.Exists(xatPath), Is.True);
 
             // Plant distinctive values in the sidecar — AccessBits different from NDFS's default

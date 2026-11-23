@@ -54,7 +54,7 @@ namespace RetroCommander.Cli
             "                                   link disk image file types to RetroCommander in Windows\n" +
             "  script FILE                      run commands from a file, one per line (# for notes)\n" +
             "  (no command)                     an interactive prompt; exit or an empty input ends it\n" +
-            "  A file copied off a disk takes NAME.xat with it when the disk's driver declares file\n" +
+            "  A file copied off a disk takes NAME.EXT.xat with it when the disk's driver declares file\n" +
             "  properties; copy-in reads it back. Only what the driver declares is kept.\n" +
             "\n" +
             "  Any command: --ro (open read-only), --as LAYOUT (open an empty disk as that layout),\n" +
@@ -439,7 +439,7 @@ namespace RetroCommander.Cli
         }
 
         // One file through the copy code the window uses (SmartFileOperations): it maps the file's
-        // properties, and between a disk and a host folder writes or reads NAME.xat when the disk's
+        // properties, and between a disk and a host folder writes or reads NAME.EXT.xat when the disk's
         // driver declares properties (XatSidecarRules).
         private async Task CopyAsync(IFileSystemEntry entry, IFileSystemPanel into, string from, string where, ContentConversion? convert)
         {

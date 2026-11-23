@@ -204,7 +204,7 @@ public class SmartFileOperations : IFileOperationsManager
                 // natively. Same-type copies (NDFS->NDFS) don't need this — DirectPropertyMapper
                 // already carried the raw "ndfs." properties into targetProps above.
                 // Copied out to a host folder: the properties the source's driver declares go in
-                // NAME.xat beside the file. A copy between two disks carries them in targetProps.
+                // NAME.EXT.xat beside the file. A copy between two disks carries them in targetProps.
                 if (options.PreserveProperties && options.PreserveNdfsMetadataOnExport && sourceDeclared != null &&
                     targetPanel is NativeFileSystemPanel)
                 {
@@ -520,7 +520,7 @@ public class SmartFileOperations : IFileOperationsManager
         }
     }
     /// <summary>
-    /// Writes NAME.xat beside a file just copied into a host folder, holding the properties the
+    /// Writes NAME.EXT.xat beside a file just copied into a host folder, holding the properties the
     /// source disk's driver declares (see <see cref="XatSidecarRules"/>). Nothing is written when
     /// the file has none of them.
     /// </summary>
@@ -542,7 +542,7 @@ public class SmartFileOperations : IFileOperationsManager
     }
 
     /// <summary>
-    /// Reads NAME.xat beside a host file being copied onto a disk and returns the properties in it
+    /// Reads NAME.EXT.xat (or the older NAME.xat) beside a host file being copied onto a disk and returns the properties in it
     /// that the target disk's driver declares, or null when there is no .xat.
     /// </summary>
     /// <remarks>
@@ -555,8 +555,9 @@ public class SmartFileOperations : IFileOperationsManager
         if (string.IsNullOrEmpty(directory))
             return null;
 
-        var xatPath = Path.Combine(directory, NdfsXatSerializer.GetXatFileName(source.Name));
-        if (!File.Exists(xatPath))
+        // NAME.EXT.xat, or the older NAME.xat when only that one is there (RetroIO FindXatFile).
+        var xatPath = NdfsXatSerializer.FindXatFile(directory, source.Name);
+        if (xatPath == null)
             return null;
 
         var parsed = NdfsXatSerializer.DeserializeFromJson(File.ReadAllText(xatPath));

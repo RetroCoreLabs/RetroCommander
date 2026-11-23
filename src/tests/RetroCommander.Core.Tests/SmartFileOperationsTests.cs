@@ -358,12 +358,65 @@ namespace RetroCommander.Core.Tests
                 new NativeFileSystemPanel("host", _testDirectory), new CopyOptions());
 
             Assert.That(result.Success, Is.True, result.ErrorMessage);
-            string xat = Path.Combine(_testDirectory, "FILE.xat");
+            string xat = Path.Combine(_testDirectory, "FILE.DAT.xat");
             Assert.That(File.Exists(xat), Is.True);
             string json = File.ReadAllText(xat);
             Assert.That(json, Does.Contain(Declared));
             Assert.That(json, Does.Contain("blue"));
             Assert.That(json, Does.Not.Contain(NotDeclared));
+        }
+
+        // GAME.PRG and GAME.SEQ both used to want GAME.xat, so the second copy overwrote the first's
+        // properties. Each now keeps its own: NAME.EXT.xat (decided 2026-11-23).
+        [Test]
+        public async Task DiskToHost_SameNameOtherExtension_EachKeepsItsOwnXat()
+        {
+            NativeFileSystemPanel host = new NativeFileSystemPanel("host", _testDirectory);
+            Assert.That((await _operations.CopyAsync(DiskFile(StandInDriver(true), "GAME.PRG"), host, new CopyOptions())).Success, Is.True);
+            Assert.That((await _operations.CopyAsync(DiskFile(StandInDriver(true), "GAME.SEQ"), host, new CopyOptions())).Success, Is.True);
+
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "GAME.PRG.xat")), Is.True);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "GAME.SEQ.xat")), Is.True);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "GAME.xat")), Is.False, "the old name is never written");
+        }
+
+        // A file exported before the change has NAME.xat beside it; copying it back still reads it.
+        [Test]
+        public async Task HostToDisk_OldStyleXatOnly_StillRead()
+        {
+            string dir = Path.Combine(_testDirectory, "old-style");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "OLD.TXT");
+            File.WriteAllText(path, "payload");
+            File.WriteAllText(Path.Combine(dir, "OLD.xat"), XatJson());
+            var target = StandInDriver(true);
+
+            var result = await _operations.CopyAsync(new NativeFileSystemEntry(new FileInfo(path)),
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
+
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            target.As<IExtendedAttributeSupport>().Verify(x => x.WriteFileWithProperties("/OLD.TXT", It.IsAny<byte[]>(),
+                It.Is<IDictionary<string, object>>(p => (string)p[Declared] == "blue")), Times.Once);
+        }
+
+        // With both names beside the file, the new one is the file's own and wins.
+        [Test]
+        public async Task HostToDisk_BothNames_TheNewOneWins()
+        {
+            string dir = Path.Combine(_testDirectory, "both");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "BOTH.TXT");
+            File.WriteAllText(path, "payload");
+            File.WriteAllText(Path.Combine(dir, "BOTH.xat"), XatJson());
+            File.WriteAllText(Path.Combine(dir, "BOTH.TXT.xat"), XatJson().Replace("blue", "green"));
+            var target = StandInDriver(true);
+
+            var result = await _operations.CopyAsync(new NativeFileSystemEntry(new FileInfo(path)),
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
+
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            target.As<IExtendedAttributeSupport>().Verify(x => x.WriteFileWithProperties("/BOTH.TXT", It.IsAny<byte[]>(),
+                It.Is<IDictionary<string, object>>(p => (string)p[Declared] == "green")), Times.Once);
         }
 
         [Test]
@@ -374,7 +427,7 @@ namespace RetroCommander.Core.Tests
 
             Assert.That(result.Success, Is.True, result.ErrorMessage);
             Assert.That(File.Exists(Path.Combine(_testDirectory, "PLAIN.DAT")), Is.True);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "PLAIN.xat")), Is.False);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "PLAIN.DAT.xat")), Is.False);
         }
 
         [Test]
@@ -384,7 +437,7 @@ namespace RetroCommander.Core.Tests
                 new NativeFileSystemPanel("host", _testDirectory), new CopyOptions { PreserveNdfsMetadataOnExport = false });
 
             Assert.That(result.Success, Is.True, result.ErrorMessage);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "OFF.xat")), Is.False);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "OFF.DAT.xat")), Is.False);
         }
 
         [Test]
@@ -417,7 +470,7 @@ namespace RetroCommander.Core.Tests
         {
             var target = StandInDriver(true);
             NativeFileSystemEntry data = HostFile("PAIR.TXT", XatJson());
-            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR.xat")));
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR.TXT.xat")));
 
             var result = await _operations.CopyAsync(xat,
                 new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
@@ -431,7 +484,7 @@ namespace RetroCommander.Core.Tests
         {
             var target = StandInDriver(true);
             NativeFileSystemEntry data = HostFile("PAIR2.TXT", XatJson());
-            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR2.xat")));
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR2.TXT.xat")));
 
             var result = await _operations.CopyAsync(xat,
                 new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions { UseXatMetadataOnImport = false });
@@ -445,13 +498,13 @@ namespace RetroCommander.Core.Tests
         {
             var target = StandInDriver(false);
             NativeFileSystemEntry data = HostFile("PAIR3.TXT", XatJson());
-            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR3.xat")));
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR3.TXT.xat")));
 
             var result = await _operations.CopyAsync(xat,
                 new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
 
             Assert.That(result.Skipped, Is.False);
-            target.Verify(d => d.WriteFile("/PAIR3.xat", It.IsAny<byte[]>()), Times.Once);
+            target.Verify(d => d.WriteFile("/PAIR3.TXT.xat", It.IsAny<byte[]>()), Times.Once);
         }
 
         [Test]
@@ -459,13 +512,13 @@ namespace RetroCommander.Core.Tests
         {
             var target = StandInDriver(true);
             NativeFileSystemEntry data = HostFile("BATCH.TXT", XatJson());
-            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "BATCH.xat")));
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "BATCH.TXT.xat")));
 
             var result = await _operations.CopyManyAsync(new IFileSystemEntry[] { data, xat },
                 new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
 
             Assert.That(result.SucceededCount, Is.EqualTo(1));
-            Assert.That(result.SkippedNames, Does.Contain("BATCH.xat"));
+            Assert.That(result.SkippedNames, Does.Contain("BATCH.TXT.xat"));
             Assert.That(result.FailedNames, Is.Empty);
             Assert.That(result.TotalCount, Is.EqualTo(1));
         }

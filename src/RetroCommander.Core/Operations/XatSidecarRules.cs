@@ -18,8 +18,8 @@ namespace RetroCommander.Core.Operations;
 /// </summary>
 /// <remarks>
 /// <para><b>The rule</b></para>
-/// A file copied off a disk into a host folder takes its properties with it in NAME.xat beside it,
-/// and a file copied from a host folder onto a disk gets them back from that NAME.xat:
+/// A file copied off a disk into a host folder takes its properties with it in NAME.EXT.xat beside it,
+/// and a file copied from a host folder onto a disk gets them back from that NAME.EXT.xat:
 ///  - only when the disk's driver declares, through <see cref="IExtendedAttributeSupport.GetCapabilities"/>,
 ///    that its files carry properties of their own (<see cref="FileSystemCapabilities.SupportsExtendedAttributes"/>);
 ///  - and only the properties it names in <see cref="FileSystemCapabilities.SupportedPropertyKeys"/>.

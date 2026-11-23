@@ -211,9 +211,9 @@ choice belongs to Windows.
 Many disks keep more about a file than its name, size and dates: an ND file has an owner and
 access bits, a Commodore file has a file type. A Windows folder cannot hold those, so:
 
-- copying a file **off** a disk into a host folder writes `NAME.xat` beside it, holding the file's
+- copying a file **off** a disk into a host folder writes `NAME.EXT.xat` beside it (`GAME.PRG` gets `GAME.PRG.xat`), holding the file's
   properties;
-- copying a file **onto** a disk reads `NAME.xat` beside it, if there is one, and the target disk
+- copying a file **onto** a disk reads `NAME.EXT.xat` beside it, if there is one (or, from an older copy, `NAME.xat` without the extension; when both are there `NAME.EXT.xat` is used), and the target disk
   gets those properties back;
 - a `.xat` file is not copied onto a disk as a file of its own; it is used for the file beside it.
 
