@@ -166,7 +166,7 @@ public class SmartFileOperations : IFileOperationsManager
             // 5. Read source content
             long bytesTransferred = 0;
             string? landedPath = null;
-            using (var sourceStream = await source.OpenReadAsync(cancellationToken))
+            using (var sourceStream = await OpenConvertedAsync(source, options.Convert, cancellationToken))
             {
                 _logger?.LogInfo(
                     $"CopyAsync diag: opened source stream type={sourceStream.GetType().Name} " +
@@ -183,7 +183,7 @@ public class SmartFileOperations : IFileOperationsManager
                 });
 
                 // Create wrapper stream for progress reporting
-                var progressStream = new ProgressStream(sourceStream, source.Size, options.Progress, source.Name);
+                var progressStream = new ProgressStream(sourceStream, sourceStream.CanSeek ? sourceStream.Length : source.Size, options.Progress, source.Name);
 
                 // 6. Create target file with mapped properties
                 var targetEntry = await targetPanel.CreateFileAsync(
@@ -493,6 +493,22 @@ public class SmartFileOperations : IFileOperationsManager
         return batchResult;
     }
 
+    /// <summary>
+    /// Opens a file for copying: as it is, or, with a conversion, its whole content converted.
+    /// </summary>
+    private static async Task<Stream> OpenConvertedAsync(IFileSystemEntry source, ContentConversion? convert, CancellationToken cancellationToken)
+    {
+        Stream raw = await source.OpenReadAsync(cancellationToken);
+        if (convert == null)
+            return raw;
+
+        using (raw)
+        {
+            using var all = new MemoryStream();
+            await raw.CopyToAsync(all, cancellationToken);
+            return new MemoryStream(convert(all.ToArray()), writable: false);
+        }
+    }
     /// <summary>
     /// Writes NAME.xat beside a file just copied into a host folder, holding the properties the
     /// source disk's driver declares (see <see cref="XatSidecarRules"/>). Nothing is written when

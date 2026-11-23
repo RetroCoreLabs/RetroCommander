@@ -8,10 +8,28 @@
 namespace RetroCommander.Core.Abstractions;
 
 /// <summary>
+/// Changes a file's bytes on the way through a copy, such as a driver's text conversion.
+/// </summary>
+/// <param name="content">
+/// The whole file as read from the source.
+/// </param>
+/// <returns>
+/// The bytes to write to the target.
+/// </returns>
+public delegate byte[] ContentConversion(byte[] content);
+
+/// <summary>
 /// Options for copy operations
 /// </summary>
 public class CopyOptions
 {
+    /// <summary>
+    /// Gets or sets a conversion applied to the file's bytes between reading and writing, or null
+    /// to copy the bytes as they are (the default). The conversions a disk offers come from its
+    /// driver (RetroIO ITransferConversionProvider); see Services.TransferConversions.
+    /// </summary>
+    public ContentConversion? Convert { get; set; }
+
     /// <summary>
     /// When false (the default), the copy fails if a file with the same name already exists
     /// in the target folder. When true, the existing file is not treated as an error.

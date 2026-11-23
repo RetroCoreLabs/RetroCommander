@@ -219,6 +219,69 @@ namespace RetroCommander.Cli.Tests
             Assert.That(err, Does.Contain("NOPE"));
         }
 
+        // Every conversion every blank disk offers: plain text copied in and out through it comes
+        // back as it went in. The text has no line ends, so no line-end option matters.
+        [Test]
+        public async Task EveryOfferedConversion_CopyInThenOut_GivesTheTextBack()
+        {
+            string host = Path.Combine(_dir, "NOTE.TXT");
+            File.WriteAllText(host, "HELLO World 123");
+            BlankImageChoice[] all = BlankImageCatalogue.List();
+            int tried = 0;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i].Provider is not RetroIO.Storage.Core.ITransferConversionProvider provider)
+                {
+                    continue;
+                }
+                string id = all[i].Layout.Id;
+                for (int c = 0; c < provider.Conversions.Count; c++)
+                {
+                    RetroIO.Storage.Core.TransferConversion conv = provider.Conversions[c];
+                    if (conv.Directions != RetroIO.Storage.Core.TransferDirections.Both)
+                    {
+                        continue;
+                    }
+                    string disk = Path.Combine(_dir, "c" + i + "-" + c + all[i].Layout.Extension);
+                    await Run("new", disk, "--disk", id);
+                    (int code, string copied, string err) = await Run("copy-in", host, disk, "--as", id, "--convert", conv.Id);
+                    Assert.That(code, Is.EqualTo(0), id + " " + conv.Id + " in: " + err);
+                    int from = copied.IndexOf(" -> ", StringComparison.Ordinal) + 4;
+                    string onDisk = copied.Substring(from, copied.IndexOf(" (", from, StringComparison.Ordinal) - from);
+
+                    string back = Path.Combine(_dir, "cb" + i + "-" + c);
+                    Directory.CreateDirectory(back);
+                    (code, _, err) = await Run("copy-out", disk + ":" + onDisk, back, "--as", id, "--convert", conv.Id);
+                    Assert.That(code, Is.EqualTo(0), id + " " + conv.Id + " out: " + err);
+                    string[] files = Directory.GetFiles(back, "*", SearchOption.TopDirectoryOnly);
+                    string text = string.Empty;
+                    for (int f = 0; f < files.Length; f++)
+                    {
+                        if (!files[f].EndsWith(".xat", StringComparison.OrdinalIgnoreCase))
+                        {
+                            text = File.ReadAllText(files[f]);
+                        }
+                    }
+                    Assert.That(text, Is.EqualTo("HELLO World 123"), id + " " + conv.Id);
+                    tried++;
+                }
+            }
+            Assert.That(tried, Is.GreaterThan(0), "no blank disk offers a conversion; nothing was tested");
+        }
+
+        [Test]
+        public async Task Convert_NotOfferedByTheDisk_ExitCode2()
+        {
+            BlankImageChoice first = BlankImageCatalogue.List()[0];
+            string disk = Path.Combine(_dir, "nc" + first.Layout.Extension);
+            await Run("new", disk, "--disk", first.Layout.Id);
+            string host = Path.Combine(_dir, "F");
+            File.WriteAllText(host, "x");
+            (int code, _, string err) = await Run("copy-in", host, disk, "--as", first.Layout.Id, "--convert", "no-such-conversion");
+            Assert.That(code, Is.EqualTo(2));
+            Assert.That(err, Does.Contain("no-such-conversion"));
+        }
+
         // The CLI must name no format: every machine, layout id, extension, option id and
         // format name comes from the drivers. A quoted one in the source fails this test.
         [Test]
@@ -241,6 +304,13 @@ namespace RetroCommander.Cli.Tests
                     for (int k = 0; k < all[i].Layout.Options.Count; k++)
                     {
                         Assert.That(src, Does.Not.Contain("\"" + all[i].Layout.Options[k].Id + "\""), Path.GetFileName(files[f]) + " hard-codes an option id");
+                    }
+                    if (all[i].Provider is RetroIO.Storage.Core.ITransferConversionProvider conversions)
+                    {
+                        for (int c = 0; c < conversions.Conversions.Count; c++)
+                        {
+                            Assert.That(src, Does.Not.Contain("\"" + conversions.Conversions[c].Id + "\""), Path.GetFileName(files[f]) + " hard-codes a conversion id");
+                        }
                     }
                 }
             }

@@ -39,6 +39,8 @@ namespace RetroCommander.Cli
             "  info DISK                        what the disk is: format, size, free space, details\n" +
             "  copy-out DISK:FILE [FOLDER]      copy a file off a disk into a folder (default: here)\n" +
             "  copy-in FILE... DISK[:PATH]      copy host files onto a disk\n" +
+            "  conversions DISK                 the conversions the disk offers for copy-in/copy-out\n" +
+            "  copy-in/copy-out ... --convert ID [--set NAME=VALUE]...  convert the bytes on the way\n" +
             "  A file copied off a disk takes NAME.xat with it when the disk's driver declares file\n" +
             "  properties; copy-in reads it back. Only what the driver declares is kept.\n" +
             "\n" +
@@ -104,6 +106,9 @@ namespace RetroCommander.Cli
                     case "copy-in":
                         await CopyInAsync(o);
                         return 0;
+                    case "conversions":
+                        await ConversionsAsync(o);
+                        return 0;
                     default:
                         throw new CliException("unknown command '" + o.Words[0] + "'; run with --help", usage: true);
                 }
@@ -163,7 +168,7 @@ namespace RetroCommander.Cli
             }
 
             BlankImageChoice choice = Catalogue.Resolve(o.Value("--machine"), disk);
-            Dictionary<string, string> values = OptionValues(choice.Layout, o);
+            Dictionary<string, string> values = OptionValues(choice.Layout.Options, "the disk " + choice.Layout.Id, o);
             string path = o.Words[1];
             if (Path.GetExtension(path).Length == 0)
             {
@@ -181,7 +186,7 @@ namespace RetroCommander.Cli
         }
 
         // The --set NAME=VALUE pairs, checked by each option's own rule; an unknown name is an error.
-        private static Dictionary<string, string> OptionValues(BlankImageLayout layout, GlobalOptions o)
+        private static Dictionary<string, string> OptionValues(IReadOnlyList<BlankImageOption> options, string owner, GlobalOptions o)
         {
             Dictionary<string, string> values = new Dictionary<string, string>(StringComparer.Ordinal);
             if (o.Values.TryGetValue("--set", out List<string>? sets))
@@ -200,16 +205,16 @@ namespace RetroCommander.Cli
             foreach (KeyValuePair<string, string> pair in values)
             {
                 BlankImageOption? option = null;
-                for (int i = 0; i < layout.Options.Count; i++)
+                for (int i = 0; i < options.Count; i++)
                 {
-                    if (layout.Options[i].Id == pair.Key)
+                    if (options[i].Id == pair.Key)
                     {
-                        option = layout.Options[i];
+                        option = options[i];
                     }
                 }
                 if (option == null)
                 {
-                    throw new CliException("the disk " + layout.Id + " has no option '" + pair.Key + "'; see: new --list", usage: true);
+                    throw new CliException(owner + " has no option '" + pair.Key + "'", usage: true);
                 }
                 string? problem = option.Check(pair.Value);
                 if (problem != null)
@@ -238,15 +243,7 @@ namespace RetroCommander.Cli
                     _out.WriteLine(l.Machine);
                 }
                 _out.WriteLine("  " + l.Id + "  " + l.Name + "  (" + l.SizeBytes.ToString("N0") + " bytes, " + l.Extension + ")");
-                for (int k = 0; k < l.Options.Count; k++)
-                {
-                    BlankImageOption opt = l.Options[k];
-                    string kind = opt.Kind == BlankImageOptionKind.Choice
-                        ? "one of: " + string.Join(" | ", opt.Choices)
-                        : opt.Kind.ToString().ToLowerInvariant();
-                    _out.WriteLine("      --set " + opt.Id + "=...  " + opt.Label + " [" + kind
-                        + (opt.Default.Length > 0 ? ", default " + opt.Default : string.Empty) + "]");
-                }
+                WriteOptions(l.Options);
             }
             if (current == null)
             {
@@ -346,7 +343,7 @@ namespace RetroCommander.Cli
                     throw new CliException(source.Path + " is a folder; copy-out copies files");
                 }
                 NativeFileSystemPanel host = new NativeFileSystemPanel("host", Path.GetFullPath(folder));
-                await CopyAsync(entry, host, entry.FullPath, Path.GetFullPath(folder));
+                await CopyAsync(entry, host, entry.FullPath, Path.GetFullPath(folder), Conversion(panel, o, toHost: true));
             }
             finally
             {
@@ -376,10 +373,11 @@ namespace RetroCommander.Cli
                 {
                     await panel.NavigateAsync(target.Path);
                 }
+                ContentConversion? convert = Conversion(panel, o, toHost: false);
                 for (int i = 1; i < o.Words.Count - 1; i++)
                 {
                     NativeFileSystemEntry file = new NativeFileSystemEntry(new FileInfo(Path.GetFullPath(o.Words[i])));
-                    await CopyAsync(file, panel, o.Words[i], panel.CurrentPath);
+                    await CopyAsync(file, panel, o.Words[i], panel.CurrentPath, convert);
                 }
             }
             finally
@@ -392,9 +390,9 @@ namespace RetroCommander.Cli
         // One file through the copy code the window uses (SmartFileOperations): it maps the file's
         // properties, and between a disk and a host folder writes or reads NAME.xat when the disk's
         // driver declares properties (XatSidecarRules).
-        private async Task CopyAsync(IFileSystemEntry entry, IFileSystemPanel into, string from, string where)
+        private async Task CopyAsync(IFileSystemEntry entry, IFileSystemPanel into, string from, string where, ContentConversion? convert)
         {
-            CopyResult result = await new SmartFileOperations().CopyAsync(entry, into, new CopyOptions());
+            CopyResult result = await new SmartFileOperations().CopyAsync(entry, into, new CopyOptions { Convert = convert });
             if (result.Skipped)
             {
                 _out.WriteLine("skipped " + from + ": " + result.SkipReason);
@@ -407,7 +405,77 @@ namespace RetroCommander.Cli
             // TargetPath is where the file really landed: a driver may rename it or put it in a
             // folder of its own choosing.
             string landed = result.TargetPath ?? where.TrimEnd('/', '\\') + "/" + entry.Name;
-            _out.WriteLine("copied " + from + " -> " + landed + " (" + entry.Size.ToString("N0") + " bytes)");
+            // The bytes written: a host file is measured, since a conversion changes the size;
+            // on a disk the driver's own count may include its padding, so the input size is given.
+            long written = File.Exists(landed) ? new FileInfo(landed).Length : entry.Size;
+            _out.WriteLine("copied " + from + " -> " + landed + " (" + written.ToString("N0") + " bytes)");
+        }
+        // ---------------------------------------------------------------- conversions
+
+        private async Task ConversionsAsync(GlobalOptions o)
+        {
+            DiskTarget target = OneDisk(o, "conversions DISK");
+            IFileSystemPanel panel = await target.OpenAsync(o, write: false);
+            try
+            {
+                ITransferConversionProvider? provider = TransferConversions.For(panel);
+                if (provider == null || provider.Conversions.Count == 0)
+                {
+                    _out.WriteLine("this disk offers no conversions; files are copied as they are");
+                    return;
+                }
+                for (int i = 0; i < provider.Conversions.Count; i++)
+                {
+                    TransferConversion c = provider.Conversions[i];
+                    string ways = c.Directions == TransferDirections.Both ? "copy-in and copy-out"
+                        : c.Directions == TransferDirections.ToHost ? "copy-out only" : "copy-in only";
+                    _out.WriteLine(c.Id + "  " + c.Name + "  (" + ways + (c.DefaultForText ? ", the usual one for text" : string.Empty) + ")");
+                    _out.WriteLine("    " + c.Description);
+                    WriteOptions(c.Options);
+                }
+            }
+            finally
+            {
+                target.Close(panel);
+            }
+        }
+
+        // --convert ID [--set NAME=VALUE]... as the disk's driver offers it, or null when not given.
+        private static ContentConversion? Conversion(IFileSystemPanel panel, GlobalOptions o, bool toHost)
+        {
+            string? id = o.Value("--convert");
+            if (id == null)
+            {
+                return null;
+            }
+            ITransferConversionProvider? provider = TransferConversions.For(panel);
+            TransferConversion? conversion = provider == null ? null : TransferConversions.Find(provider, id);
+            if (provider == null || conversion == null)
+            {
+                throw new CliException("this disk has no conversion '" + id + "'; see: conversions DISK", usage: true);
+            }
+            Dictionary<string, string> values = OptionValues(conversion.Options, "the conversion " + conversion.Id, o);
+            try
+            {
+                return TransferConversions.Make(provider, conversion, toHost, values);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new CliException(ex.Message, usage: true);
+            }
+        }
+
+        private void WriteOptions(IReadOnlyList<BlankImageOption> options)
+        {
+            for (int k = 0; k < options.Count; k++)
+            {
+                BlankImageOption opt = options[k];
+                string kind = opt.Kind == BlankImageOptionKind.Choice
+                    ? "one of: " + string.Join(" | ", opt.Choices)
+                    : opt.Kind.ToString().ToLowerInvariant();
+                _out.WriteLine("      --set " + opt.Id + "=...  " + opt.Label + " [" + kind
+                    + (opt.Default.Length > 0 ? ", default " + opt.Default : string.Empty) + "]");
+            }
         }
         // ---------------------------------------------------------------- helpers
 
