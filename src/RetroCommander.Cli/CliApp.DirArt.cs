@@ -83,21 +83,21 @@ namespace RetroCommander.Cli
                     case "add":
                     {
                         int position = Number(o.Words[3], "POSITION");
-                        raw.InsertSeparator(position, Name(o.Words[4], layout.NameLength, layout.PadByte, "NAME"));
+                        raw.InsertSeparator(position, Name(raw, o.Words[4], layout.NameLength, "NAME"));
                         _out.WriteLine("added a " + layout.SeparatorTypeName + " line at " + position);
                         break;
                     }
                     case "name":
                     {
                         int index = Number(o.Words[3], "INDEX");
-                        raw.WriteRawName(index, Name(o.Words[4], layout.NameLength, layout.PadByte, "NAME"));
+                        raw.WriteRawName(index, Name(raw, o.Words[4], layout.NameLength, "NAME"));
                         _out.WriteLine("named entry " + index);
                         break;
                     }
                     default:
                         raw.WriteRawVolumeHeader(
-                            Name(o.Words[3], layout.VolumeNameLength, layout.PadByte, "NAME"),
-                            Name(o.Words[4], layout.VolumeIdLength, layout.PadByte, "ID"));
+                            Name(raw, o.Words[3], layout.VolumeNameLength, "NAME"),
+                            Name(raw, o.Words[4], layout.VolumeIdLength, "ID"));
                         _out.WriteLine("wrote the disk name and id");
                         break;
                 }
@@ -173,23 +173,23 @@ namespace RetroCommander.Cli
             return n;
         }
 
-        // A name as hex bytes ("B0 B1 C0" or "B0B1C0") or as "text:WORDS" in ASCII; padded with the
-        // driver's pad byte up to the length, and refused when longer.
-        internal static byte[] Name(string text, int length, byte pad, string what)
+        // A name as hex bytes ("B0 B1 C0" or "B0B1C0") or as "text:WORDS"; padded with the driver's
+        // pad byte up to the length, and refused when longer. Text becomes bytes by the driver's own
+        // rule for file names (IRawDirectoryNames.EncodeText), so the CLI knows no character set: on
+        // a Commodore disk "text:hello" and "text:HELLO" are both 48 45 4C 4C 4F.
+        internal static byte[] Name(IRawDirectoryNames raw, string text, int length, string what)
         {
+            byte pad = raw.RawLayout.PadByte;
             byte[] given;
             if (text.StartsWith("text:", StringComparison.Ordinal))
             {
-                string words = text.Substring(5);
-                given = new byte[words.Length];
-                for (int i = 0; i < words.Length; i++)
+                try
                 {
-                    if (words[i] < 0x20 || words[i] > 0x7E)
-                    {
-                        throw new CliException(what + ": text: takes plain ASCII; give other bytes as hex", usage: true);
-                    }
-
-                    given[i] = (byte)words[i];
+                    given = raw.EncodeText(text.Substring(5));
+                }
+                catch (ArgumentException e)
+                {
+                    throw new CliException(what + ": " + e.Message, usage: true);
                 }
             }
             else

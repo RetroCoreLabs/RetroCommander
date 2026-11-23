@@ -205,8 +205,9 @@ and what a separator is, and `dirart list` prints them first.
 - `name` writes the name bytes of the entry at INDEX, file or separator.
 - `header` writes the disk name and the disk id.
 
-NAME and ID are hex bytes, with or without spaces (`"B0 C0 A0"`, `B0C0A0`), or `text:WORDS` for
-plain ASCII. A shorter name is padded with the pad byte; a longer one is refused.
+NAME and ID are hex bytes, with or without spaces (`"B0 C0 A0"`, `B0C0A0`), or `text:WORDS`,
+turned into bytes by the disk's own rule for file names (on a Commodore disk `text:hello` and
+`text:HELLO` are both 48 45 4C 4C 4F, as a C64 stores the name when it is typed). A shorter name is padded with the pad byte; a longer one is refused.
 
 ```powershell
 retrocommander-cli new art.d64 --disk cbm-d64

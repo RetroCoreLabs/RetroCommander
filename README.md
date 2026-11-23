@@ -37,6 +37,7 @@ a format bug shows up first.
 | Application | What it is | README |
 |---|---|---|
 | `RetroCommander` | The file manager | [README](https://github.com/RetroCoreLabs/RetroCommander/blob/main/src/RetroCommander.Desktop/README.md) |
+| `retrocommander-cli` | The same work from a command line or a script: list, copy in and out, new disks, conversions, directory art | [README](https://github.com/RetroCoreLabs/RetroCommander/blob/main/src/RetroCommander.Cli/README.md) |
 
 ---
 
@@ -164,7 +165,9 @@ data loss. See `RetroIO.Storage.Core` (`RetroIO/src/RetroIO.Storage.Core/README.
 
 | Project | Covers |
 |---|---|
-| `src/tests/RetroCommander.Desktop.Tests` | The application |
+| `src/tests/RetroCommander.Desktop.Tests` | The windows, run without a screen |
+| `src/tests/RetroCommander.Cli.Tests` | The command-line tool |
+| `src/tests/RetroCommander.Core.Tests` | The shared parts: panels, copying, `.xat` side files, paths |
 
 The **drivers** are tested in RetroIO, against real disk images — `src/RetroIO.Storage.Local/tests`. A format bug
 found here belongs there as a test, because a driver fixed only in the file manager is a driver still broken for

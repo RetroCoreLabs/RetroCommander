@@ -150,12 +150,27 @@ namespace RetroCommander.Cli.Tests
         }
 
         [Test]
-        public void Name_PadsWithThePadByte_AndTakesHexWithOrWithoutSpaces()
+        public void Name_PadsWithThePadByte_TakesHex_AndTurnsTextIntoBytesByTheDriversRule()
         {
-            Assert.That(CliApp.Name("B0 C0", 4, 0xA0, "NAME"), Is.EqualTo(new byte[] { 0xB0, 0xC0, 0xA0, 0xA0 }));
-            Assert.That(CliApp.Name("B0C0", 2, 0xA0, "NAME"), Is.EqualTo(new byte[] { 0xB0, 0xC0 }));
-            Assert.That(CliApp.Name("text:AB", 3, 0x20, "NAME"), Is.EqualTo(new byte[] { 0x41, 0x42, 0x20 }));
-            Assert.Throws<CliException>(() => CliApp.Name("text:é", 3, 0x20, "NAME"));
+            (BlankImageChoice choice, RawDirectoryLayout _) = ArtDisk();
+            using MemoryStream stream = new MemoryStream(choice.Provider.CreateBlank(choice.Layout.Id, new Dictionary<string, string>()));
+            using IFileSystemDriver driver = choice.Provider.Mount(stream, true, choice.Layout.Id);
+            IRawDirectoryNames raw = (IRawDirectoryNames)driver;
+            byte pad = raw.RawLayout.PadByte;
+
+            Assert.That(CliApp.Name(raw, "B0 C0", 4, "NAME"), Is.EqualTo(new byte[] { 0xB0, 0xC0, pad, pad }));
+            Assert.That(CliApp.Name(raw, "B0C0", 2, "NAME"), Is.EqualTo(new byte[] { 0xB0, 0xC0 }));
+
+            // Text is the driver's business: the CLI pads what the driver gives and adds nothing.
+            byte[] text = raw.EncodeText("hello AB");
+            byte[] expected = new byte[text.Length + 1];
+            text.CopyTo(expected, 0);
+            expected[text.Length] = pad;
+            Assert.That(CliApp.Name(raw, "text:hello AB", text.Length + 1, "NAME"), Is.EqualTo(expected));
+
+            // A character the driver has no byte for is refused as a usage error, with its message.
+            CliException e = Assert.Throws<CliException>(() => CliApp.Name(raw, "text:é", 3, "NAME"))!;
+            Assert.That(e.Message, Does.Contain("NAME: "));
         }
     }
 }
