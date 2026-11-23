@@ -18,7 +18,9 @@ using NUnit.Framework;
 using RetroCommander.Core.Abstractions;
 using RetroCommander.Core.Operations;
 using RetroCommander.Core.PropertyBags;
+using RetroCommander.Core.Providers;
 using RetroCommander.Core.Transfer;
+using RetroIO.Storage.Core;
 
 namespace RetroCommander.Core.Tests
 {
@@ -294,195 +296,178 @@ namespace RetroCommander.Core.Tests
 
         #endregion
 
-        #region NDFS Metadata Sidecar Tests
+        #region .xat sidecar tests - driven by what the driver declares
 
-        [Test]
-        public async Task CopyAsync_NdfsEntryToWindows_WritesXatSidecar()
+        // The rule under test (XatSidecarRules): a .xat goes with a file copied between a disk and
+        // a host folder only when the disk's driver declares, through IExtendedAttributeSupport,
+        // that its files carry properties, and it holds only the properties the driver names. The
+        // stand-in driver declares a made-up property, so nothing here depends on a real format.
+        private const string Declared = "test.colour";
+        private const string NotDeclared = "test.undeclared";
+
+        private static Mock<IFileSystemDriver> StandInDriver(bool declares)
         {
-            // Arrange - "ndfs." prefixed keys are what DriverAdapterFileSystemEntry populates from
-            // IExtendedAttributeSupport.GetFileProperties for a real NDFS entry (see NdfsPropertyBagKeys).
-            var sourceProps = new PropertyBag();
-            sourceProps.SetProperty("ndfs.object_name", "NDFSFILE");
-            sourceProps.SetProperty("ndfs.user_name", "BOB");
-            sourceProps.SetProperty("ndfs.access_bits", (uint)0x1FF);
+            var driver = new Mock<IFileSystemDriver> { DefaultValue = DefaultValue.Empty };
+            driver.Setup(d => d.FileSystemType).Returns("StandIn");
+            driver.Setup(d => d.GetMetadata(It.IsAny<string>()))
+                .Returns<string>(p => new FileMetadata { Name = p.TrimStart('/'), Path = p, Size = 7 });
+            var xa = driver.As<IExtendedAttributeSupport>();
+            xa.Setup(x => x.GetCapabilities()).Returns(declares
+                ? new FileSystemCapabilities { SupportsExtendedAttributes = true, SupportedPropertyKeys = new[] { Declared } }
+                : FileSystemCapabilities.Basic);
+            xa.Setup(x => x.GetFileProperties(It.IsAny<string>())).Returns(new Dictionary<string, object>
+            {
+                [Declared] = "blue",
+                [NotDeclared] = "kept off"
+            });
+            driver.Setup(d => d.ReadFile(It.IsAny<string>())).Returns(Encoding.ASCII.GetBytes("payload"));
+            return driver;
+        }
 
-            var sourceEntry = CreateMockEntry("ndfsfile.txt", "payload", sourceProps);
-            var targetPanel = CreateMockPanel("Windows");
+        private static DriverAdapterFileSystemEntry DiskFile(Mock<IFileSystemDriver> driver, string name)
+        {
+            return new DriverAdapterFileSystemEntry(driver.Object, new FileMetadata { Name = name, Path = "/" + name, Size = 7 });
+        }
 
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, PreserveProperties = true, PreserveNdfsMetadataOnExport = true });
+        private NativeFileSystemEntry HostFile(string name, string? xatJson)
+        {
+            string dir = Path.Combine(_testDirectory, "host-src");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, name);
+            File.WriteAllText(path, "payload");
+            if (xatJson != null)
+            {
+                File.WriteAllText(Path.Combine(dir, RetroIO.Storage.Ndfs.PropertyBags.NdfsXatSerializer.GetXatFileName(name)), xatJson);
+            }
+            return new NativeFileSystemEntry(new FileInfo(path));
+        }
 
-            // Assert
-            Assert.That(result.Success, Is.True);
-            string xatPath = Path.Combine(_testDirectory, "ndfsfile.xat");
-            Assert.That(File.Exists(xatPath), Is.True, "a .xat sidecar must be written next to the copied file");
-
-            string json = File.ReadAllText(xatPath);
-            Assert.That(json, Does.Contain("ndfs.object_name"));
-            Assert.That(json, Does.Contain("NDFSFILE"));
-            Assert.That(json, Does.Contain("BOB"));
+        private static string XatJson()
+        {
+            return RetroIO.Storage.Ndfs.PropertyBags.NdfsXatSerializer.SerializeToJson(new Dictionary<string, object>
+            {
+                [Declared] = "blue",
+                [NotDeclared] = "kept off"
+            });
         }
 
         [Test]
-        public async Task CopyAsync_PreserveNdfsMetadataOnExportFalse_NoSidecarWritten()
+        public async Task DiskToHost_DriverDeclaresProperties_XatHoldsOnlyTheDeclaredOnes()
         {
-            // Arrange
-            var sourceProps = new PropertyBag();
-            sourceProps.SetProperty("ndfs.object_name", "NDFSFILE2");
+            var result = await _operations.CopyAsync(DiskFile(StandInDriver(true), "FILE.DAT"),
+                new NativeFileSystemPanel("host", _testDirectory), new CopyOptions());
 
-            var sourceEntry = CreateMockEntry("nosidecar.txt", "payload", sourceProps);
-            var targetPanel = CreateMockPanel("Windows");
-
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, PreserveProperties = true, PreserveNdfsMetadataOnExport = false });
-
-            // Assert
-            Assert.That(result.Success, Is.True);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "nosidecar.xat")), Is.False,
-                "disabling the setting must suppress the sidecar even though NDFS metadata is present");
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            string xat = Path.Combine(_testDirectory, "FILE.xat");
+            Assert.That(File.Exists(xat), Is.True);
+            string json = File.ReadAllText(xat);
+            Assert.That(json, Does.Contain(Declared));
+            Assert.That(json, Does.Contain("blue"));
+            Assert.That(json, Does.Not.Contain(NotDeclared));
         }
 
         [Test]
-        public async Task CopyAsync_NoNdfsMetadataPresent_NoSidecarWritten()
+        public async Task DiskToHost_DriverDeclaresNothing_NoXat()
         {
-            // Arrange - a plain Windows source has nothing "ndfs."-prefixed to export.
-            var sourceProps = new PropertyBag();
-            sourceProps.SetProperty(WindowsProperties.Attributes, FileAttributes.Normal.ToString());
+            var result = await _operations.CopyAsync(DiskFile(StandInDriver(false), "PLAIN.DAT"),
+                new NativeFileSystemPanel("host", _testDirectory), new CopyOptions());
 
-            var sourceEntry = CreateMockEntry("plain.txt", "payload", sourceProps);
-            var targetPanel = CreateMockPanel("Windows");
-
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, PreserveProperties = true, PreserveNdfsMetadataOnExport = true });
-
-            // Assert
-            Assert.That(result.Success, Is.True);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "plain.xat")), Is.False);
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "PLAIN.DAT")), Is.True);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "PLAIN.xat")), Is.False);
         }
 
         [Test]
-        public async Task CopyAsync_NdfsToNdfs_NoSidecarWritten()
+        public async Task DiskToHost_ExportSettingOff_NoXat()
         {
-            // Arrange - same-type copies carry "ndfs." metadata directly via DirectPropertyMapper;
-            // a sidecar file is only needed when the target can't hold the metadata natively.
-            var sourceProps = new PropertyBag();
-            sourceProps.SetProperty("ndfs.object_name", "NDFSFILE3");
+            var result = await _operations.CopyAsync(DiskFile(StandInDriver(true), "OFF.DAT"),
+                new NativeFileSystemPanel("host", _testDirectory), new CopyOptions { PreserveNdfsMetadataOnExport = false });
 
-            var sourceEntry = CreateMockEntry("same.dat", "payload", sourceProps);
-            var targetPanel = CreateMockPanel("NDFS");
-
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, PreserveProperties = true, PreserveNdfsMetadataOnExport = true });
-
-            // Assert
-            Assert.That(result.Success, Is.True);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "same.xat")), Is.False);
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            Assert.That(File.Exists(Path.Combine(_testDirectory, "OFF.xat")), Is.False);
         }
 
         [Test]
-        public async Task CopyAsync_XatFileIntoNdfs_IsSkippedNotCopied_WhenImportEnabled()
+        public async Task DiskToDisk_NoXat_PropertiesGoWithTheWrite()
         {
-            // Arrange - a ".xat" is metadata for its paired file, not an independent file; it
-            // must not be written as its own NDFS object.
-            var sourceEntry = CreateMockEntry("sidecar.xat", "{}");
-            var targetPanel = CreateMockPanel("NDFS");
+            var target = StandInDriver(true);
+            var result = await _operations.CopyAsync(DiskFile(StandInDriver(true), "D2D.DAT"),
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
 
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, UseXatMetadataOnImport = true });
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            target.As<IExtendedAttributeSupport>().Verify(x => x.WriteFileWithProperties("/D2D.DAT", It.IsAny<byte[]>(),
+                It.Is<IDictionary<string, object>>(p => p.ContainsKey(Declared))), Times.Once);
+            target.Verify(d => d.WriteFile(It.Is<string>(n => n.EndsWith(".xat")), It.IsAny<byte[]>()), Times.Never);
+        }
 
-            // Assert
+        [Test]
+        public async Task HostToDisk_XatBeside_DeclaredPropertiesWrittenUndeclaredNot()
+        {
+            var target = StandInDriver(true);
+            var result = await _operations.CopyAsync(HostFile("IN.TXT", XatJson()),
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
+
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
+            target.As<IExtendedAttributeSupport>().Verify(x => x.WriteFileWithProperties("/IN.TXT", It.IsAny<byte[]>(),
+                It.Is<IDictionary<string, object>>(p => (string)p[Declared] == "blue" && !p.ContainsKey(NotDeclared))), Times.Once);
+        }
+
+        [Test]
+        public async Task HostToDisk_TheXatItself_SkippedWhenTheDriverDeclares()
+        {
+            var target = StandInDriver(true);
+            NativeFileSystemEntry data = HostFile("PAIR.TXT", XatJson());
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR.xat")));
+
+            var result = await _operations.CopyAsync(xat,
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
+
             Assert.That(result.Success, Is.True, "a skip is not a failure");
             Assert.That(result.Skipped, Is.True);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "sidecar.xat")), Is.False,
-                "the .xat must not be written as its own NDFS object");
         }
 
         [Test]
-        public async Task CopyAsync_XatFileIntoNdfs_IsCopiedNormally_WhenImportDisabled()
+        public async Task HostToDisk_TheXatItself_CopiedAsAFile_WhenImportOff()
         {
-            // Arrange - with the feature off, a .xat is just an ordinary file like any other.
-            var sourceEntry = CreateMockEntry("sidecar2.xat", "{}");
-            var targetPanel = CreateMockPanel("NDFS");
+            var target = StandInDriver(true);
+            NativeFileSystemEntry data = HostFile("PAIR2.TXT", XatJson());
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR2.xat")));
 
-            // Act
-            var result = await _operations.CopyAsync(sourceEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, UseXatMetadataOnImport = false });
+            var result = await _operations.CopyAsync(xat,
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions { UseXatMetadataOnImport = false });
 
-            // Assert
-            Assert.That(result.Success, Is.True);
+            Assert.That(result.Success, Is.True, result.ErrorMessage);
             Assert.That(result.Skipped, Is.False);
-            Assert.That(File.Exists(Path.Combine(_testDirectory, "sidecar2.xat")), Is.True,
-                "disabling the setting must fall back to copying the .xat like any other file");
         }
 
         [Test]
-        public async Task CopyAsync_IntoNdfs_WithSidecarPresent_MergesSidecarMetadataIntoWrite()
+        public async Task HostToDisk_DriverDeclaresNothing_TheXatIsAnOrdinaryFile()
         {
-            // Arrange - a real native-style source file with a real ".xat" sidecar sitting next to
-            // it on disk (TryReadNdfsMetadataSidecar reads via source.FullPath directly, so this
-            // must be a real path, not the fake "/test/..." CreateMockEntry normally uses).
-            string sourceDir = Path.Combine(_testDirectory, "import-src");
-            Directory.CreateDirectory(sourceDir);
-            string sourceFilePath = Path.Combine(sourceDir, "IMPORTED.TXT");
-            File.WriteAllText(sourceFilePath, "content");
+            var target = StandInDriver(false);
+            NativeFileSystemEntry data = HostFile("PAIR3.TXT", XatJson());
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "PAIR3.xat")));
 
-            var sidecarProps = new Dictionary<string, object>
-            {
-                ["ndfs.access_bits"] = (uint)0x0155
-            };
-            string xatJson = RetroIO.Storage.Ndfs.PropertyBags.NdfsXatSerializer.SerializeToJson(sidecarProps);
-            File.WriteAllText(Path.Combine(sourceDir, "IMPORTED.xat"), xatJson);
+            var result = await _operations.CopyAsync(xat,
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
 
-            var mockEntry = new Mock<IFileSystemEntry>();
-            mockEntry.Setup(e => e.Name).Returns("IMPORTED.TXT");
-            mockEntry.Setup(e => e.FullPath).Returns(sourceFilePath);
-            mockEntry.Setup(e => e.Size).Returns(7);
-            mockEntry.Setup(e => e.IsDirectory).Returns(false);
-            mockEntry.Setup(e => e.Properties).Returns(new PropertyBag());
-            mockEntry.Setup(e => e.OpenReadAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new MemoryStream(Encoding.UTF8.GetBytes("content")));
-
-            var targetPanel = CreateMockPanel("NDFS");
-
-            // Act
-            var result = await _operations.CopyAsync(mockEntry.Object, targetPanel.Object,
-                new CopyOptions { Overwrite = true, UseXatMetadataOnImport = true });
-
-            // Assert
-            Assert.That(result.Success, Is.True, $"import must succeed: {result.ErrorMessage}");
-            targetPanel.Verify(p => p.CreateFileAsync(
-                "IMPORTED.TXT",
-                It.IsAny<Stream>(),
-                It.Is<IPropertyBag?>(bag => bag != null && bag.HasProperty("ndfs.access_bits")),
-                It.IsAny<CancellationToken>()),
-                Times.Once,
-                "the sidecar's NDFS properties must be passed through to CreateFileAsync so the panel can persist them");
+            Assert.That(result.Skipped, Is.False);
+            target.Verify(d => d.WriteFile("/PAIR3.xat", It.IsAny<byte[]>()), Times.Once);
         }
 
         [Test]
-        public async Task CopyManyAsync_XatSkippedAlongsideRealFile_ExcludedFromSucceededAndFailedCounts()
+        public async Task CopyMany_SkippedXat_NotCountedAsCopiedOrFailed()
         {
-            // Arrange
-            var dataEntry = CreateMockEntry("batch.txt", "payload");
-            var xatEntry = CreateMockEntry("batch.xat", "{}");
-            var targetPanel = CreateMockPanel("NDFS");
+            var target = StandInDriver(true);
+            NativeFileSystemEntry data = HostFile("BATCH.TXT", XatJson());
+            var xat = new NativeFileSystemEntry(new FileInfo(Path.Combine(Path.GetDirectoryName(data.FullPath)!, "BATCH.xat")));
 
-            // Act
-            var result = await _operations.CopyManyAsync(
-                new[] { dataEntry.Object, xatEntry.Object }, targetPanel.Object,
-                new CopyOptions { Overwrite = true, UseXatMetadataOnImport = true });
+            var result = await _operations.CopyManyAsync(new IFileSystemEntry[] { data, xat },
+                new DriverAdapterFileSystemPanel("disk", target.Object, "test://disk"), new CopyOptions());
 
-            // Assert
             Assert.That(result.SucceededCount, Is.EqualTo(1));
-            Assert.That(result.SkippedNames, Does.Contain("batch.xat"));
+            Assert.That(result.SkippedNames, Does.Contain("BATCH.xat"));
             Assert.That(result.FailedNames, Is.Empty);
-            Assert.That(result.TotalCount, Is.EqualTo(1),
-                "the skipped .xat must not inflate the 'copied X of Y' count");
+            Assert.That(result.TotalCount, Is.EqualTo(1));
         }
 
         #endregion

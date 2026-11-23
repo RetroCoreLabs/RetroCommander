@@ -40,6 +40,12 @@ public class DriverAdapterFileSystemEntry : IFileSystemEntry
         _properties = ExtractProperties();
     }
 
+    /// <summary>
+    /// Gets the driver of the disk this entry is on; the copy code asks it which file properties
+    /// it declares (see <see cref="Operations.XatSidecarRules"/>).
+    /// </summary>
+    public IFileSystemDriver Driver => _driver;
+
     /// <inheritdoc/>
     public string Name => _metadata.Name;
 

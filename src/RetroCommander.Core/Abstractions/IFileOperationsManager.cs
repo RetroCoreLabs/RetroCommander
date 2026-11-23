@@ -146,6 +146,12 @@ public class CopyResult
     public string? SkipReason { get; set; }
 
     /// <summary>
+    /// Gets or sets where the copy landed, as the target lists it (a driver may change the name
+    /// or the folder); null when the copy did not happen.
+    /// </summary>
+    public string? TargetPath { get; set; }
+
+    /// <summary>
     /// Creates a result for a finished copy.
     /// </summary>
     /// <param name="preserved">

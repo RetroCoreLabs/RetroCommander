@@ -12,6 +12,7 @@ namespace RetroCommander.Core.Transfer;
 /// </summary>
 public class PropertyMapperRegistry
 {
+    private static readonly DirectPropertyMapper s_direct = new DirectPropertyMapper();
     private readonly Dictionary<(string Source, string Target), IPropertyMapper> _mappers = new();
     private readonly IPropertyMapper _fallbackMapper = new StandardPropertyMapper();
 
@@ -31,6 +32,13 @@ public class PropertyMapperRegistry
         if (_mappers.TryGetValue((sourceType, targetType), out var mapper))
         {
             return mapper;
+        }
+
+        // The same file system on both sides: every property goes across as it is, whatever the
+        // format - the driver on the target understands its own properties.
+        if (string.Equals(sourceType, targetType, StringComparison.Ordinal))
+        {
+            return s_direct;
         }
 
         // Fallback to standard property mapper

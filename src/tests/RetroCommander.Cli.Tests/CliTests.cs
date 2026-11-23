@@ -126,9 +126,22 @@ namespace RetroCommander.Cli.Tests
                 Assert.That(listing, Does.Contain(onDisk.Substring(slash + 1)), id);
 
                 string back = Path.Combine(_dir, "back" + i);
+                Directory.CreateDirectory(back);
                 (code, _, err) = await Run("copy-out", disk + ":" + onDisk, back, "--as", id);
                 Assert.That(code, Is.EqualTo(0), id + " copy-out: " + err);
-                byte[] got = File.ReadAllBytes(back);
+                // The file, plus a .xat only if the driver declares properties.
+                string[] outFiles = Directory.GetFiles(back);
+                string? dataFile = null;
+                for (int f = 0; f < outFiles.Length; f++)
+                {
+                    if (!outFiles[f].EndsWith(".xat", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Assert.That(dataFile, Is.Null, id + ": more than one file copied out");
+                        dataFile = outFiles[f];
+                    }
+                }
+                Assert.That(dataFile, Is.Not.Null, id);
+                byte[] got = File.ReadAllBytes(dataFile!);
                 Assert.That(got.Length, Is.GreaterThanOrEqualTo(data.Length), id);
                 Assert.That(got.AsSpan(0, data.Length).SequenceEqual(data), Is.True, id);
             }

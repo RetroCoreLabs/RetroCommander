@@ -12,6 +12,7 @@ using RetroCommander.Core.PropertyBags;
 using RetroCommander.Core.Providers;
 using RetroCommander.Core.Transfer;
 using RetroIO.Storage.Ndfs.PropertyBags;
+using RetroIO.Storage.Core;
 
 namespace RetroCommander.Core.Operations;
 
@@ -82,11 +83,14 @@ public class SmartFileOperations : IFileOperationsManager
             // a separate NDFS object. Its content is consumed directly from disk by
             // TryReadNdfsMetadataSidecar for the paired data file's own copy below, so this is safe
             // regardless of which order the two entries appear in a batch.
-            if (options.UseXatMetadataOnImport && targetPanel.FileSystemType == "NDFS" &&
+            // Whether the target's driver keeps file properties is its own declaration (XatSidecarRules).
+            FileSystemCapabilities? targetDeclared = XatSidecarRules.Declared(targetPanel);
+            FileSystemCapabilities? sourceDeclared = XatSidecarRules.Declared(source);
+            if (options.UseXatMetadataOnImport && targetDeclared != null && source is NativeFileSystemEntry &&
                 NdfsXatSerializer.IsXatFile(source.Name))
             {
                 return CopyResult.SkippedResult(
-                    $"'{source.Name}' is an NDFS metadata sidecar, used for its paired file instead of copied separately");
+                    $"'{source.Name}' holds the properties of the file beside it, used for that file instead of copied separately");
             }
 
             _logger?.LogFileOperation("Copy Started", source.FullPath, LogLevel.Info);
@@ -128,12 +132,13 @@ public class SmartFileOperations : IFileOperationsManager
             // metadata supplements/overrides whatever the mapper produced (the mapper alone only
             // carries StandardProperties.* across for a non-NDFS source — see
             // PropertyMapperRegistry.CreateDefault). This is the counterpart to the export step below.
-            if (options.UseXatMetadataOnImport && targetType == "NDFS")
+            // Only the properties the target's driver declares are taken from the .xat.
+            if (options.UseXatMetadataOnImport && targetDeclared != null && source is NativeFileSystemEntry)
             {
-                var importedNdfsProps = TryReadNdfsMetadataSidecar(source);
-                if (importedNdfsProps != null)
+                var imported = TryReadXatSidecar(source, targetDeclared);
+                if (imported != null)
                 {
-                    foreach (var kvp in importedNdfsProps)
+                    foreach (var kvp in imported)
                     {
                         targetProps.SetProperty(kvp.Key, kvp.Value);
                     }
@@ -160,6 +165,7 @@ public class SmartFileOperations : IFileOperationsManager
 
             // 5. Read source content
             long bytesTransferred = 0;
+            string? landedPath = null;
             using (var sourceStream = await source.OpenReadAsync(cancellationToken))
             {
                 _logger?.LogInfo(
@@ -187,6 +193,7 @@ public class SmartFileOperations : IFileOperationsManager
                     cancellationToken);
 
                 bytesTransferred = source.Size;
+                landedPath = targetEntry.FullPath;
 
                 _logger?.LogInfo(
                     $"CopyAsync diag: CreateFileAsync returned targetEntry.Name='{targetEntry.Name}' " +
@@ -196,15 +203,20 @@ public class SmartFileOperations : IFileOperationsManager
                 // ".xat" sidecar file when copying out of NDFS into a filesystem that can't hold it
                 // natively. Same-type copies (NDFS->NDFS) don't need this — DirectPropertyMapper
                 // already carried the raw "ndfs." properties into targetProps above.
-                if (options.PreserveProperties && options.PreserveNdfsMetadataOnExport && targetType != "NDFS")
+                // Copied out to a host folder: the properties the source's driver declares go in
+                // NAME.xat beside the file. A copy between two disks carries them in targetProps.
+                if (options.PreserveProperties && options.PreserveNdfsMetadataOnExport && sourceDeclared != null &&
+                    targetPanel is NativeFileSystemPanel)
                 {
-                    await TryWriteNdfsMetadataSidecarAsync(sourceProps, targetPanel, targetEntry, cancellationToken);
+                    await TryWriteXatSidecarAsync(sourceProps, sourceDeclared, targetPanel, targetEntry, cancellationToken);
                 }
             }
 
             _logger?.LogTransfer(source.FullPath, targetPath, bytesTransferred, true);
 
-            return CopyResult.SuccessResult(preserved, lost);
+            var done = CopyResult.SuccessResult(preserved, lost);
+            done.TargetPath = landedPath;
+            return done;
         }
         catch (Exception ex)
         {
@@ -482,101 +494,56 @@ public class SmartFileOperations : IFileOperationsManager
     }
 
     /// <summary>
-    /// Writes real NDFS metadata (from DriverAdapterFileSystemEntry.ExtractProperties, keyed under
-    /// the "ndfs." prefix — see NdfsPropertyBagKeys) as a JSON ".xat" sidecar next to a just-copied
-    /// file, using the entry's actual on-disk name (post-sanitization, e.g. NativeFileSystemPanel's
-    /// colon->period mapping) rather than the source's name, so the sidecar pairs with the real
-    /// file and never itself hits the NTFS-ADS-colon issue. No-ops if the source carried no NDFS
-    /// metadata (e.g. it isn't an NDFS entry, or metadata population failed).
+    /// Writes NAME.xat beside a file just copied into a host folder, holding the properties the
+    /// source disk's driver declares (see <see cref="XatSidecarRules"/>). Nothing is written when
+    /// the file has none of them.
     /// </summary>
-    private static async Task TryWriteNdfsMetadataSidecarAsync(
+    private static async Task TryWriteXatSidecarAsync(
         IPropertyBag sourceProps,
+        FileSystemCapabilities declared,
         IFileSystemPanel targetPanel,
         IFileSystemEntry targetEntry,
         CancellationToken cancellationToken)
     {
-        var ndfsMetadata = ExtractNdfsProperties(sourceProps);
-        if (ndfsMetadata.Count == 0)
+        var kept = XatSidecarRules.Pick(sourceProps.GetAllProperties(), declared);
+        if (kept.Count == 0)
             return;
 
         var xatName = NdfsXatSerializer.GetXatFileName(targetEntry.Name);
-        var json = NdfsXatSerializer.SerializeToJson(ndfsMetadata);
+        var json = NdfsXatSerializer.SerializeToJson(kept);
         using var xatStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         await targetPanel.CreateFileAsync(xatName, xatStream, null, cancellationToken);
     }
 
     /// <summary>
-    /// Reads a ".xat" sidecar sitting next to <paramref name="source"/> (same directory, filename
-    /// derived via NdfsXatSerializer.GetXatFileName) and returns just its NDFS-specific properties.
-    /// Deliberately reads via source.FullPath directly rather than requiring a concrete
-    /// NativeFileSystemEntry/panel reference: for a native source this resolves to a real sidecar
-    /// path; for any other source type FullPath is a virtual filesystem path that can never resolve
-    /// to a real sidecar, so this safely (and testably, without a live filesystem panel) no-ops.
-    /// Best-effort — a missing, foreign, or corrupt sidecar must never fail the copy.
+    /// Reads NAME.xat beside a host file being copied onto a disk and returns the properties in it
+    /// that the target disk's driver declares, or null when there is no .xat.
     /// </summary>
-    private static IDictionary<string, object>? TryReadNdfsMetadataSidecar(IFileSystemEntry source)
+    /// <remarks>
+    /// A .xat that is there but cannot be read is an error and fails the copy: copying the file
+    /// without the properties it says it has would lose them without a word.
+    /// </remarks>
+    private static Dictionary<string, object>? TryReadXatSidecar(IFileSystemEntry source, FileSystemCapabilities declared)
     {
-        try
-        {
-            var directory = Path.GetDirectoryName(source.FullPath);
-            if (string.IsNullOrEmpty(directory))
-                return null;
-
-            var xatPath = Path.Combine(directory, NdfsXatSerializer.GetXatFileName(source.Name));
-            if (!File.Exists(xatPath))
-                return null;
-
-            var json = File.ReadAllText(xatPath);
-            var parsed = NdfsXatSerializer.DeserializeFromJson(json);
-            return ExtractNdfsProperties(parsed);
-        }
-        catch
-        {
+        var directory = Path.GetDirectoryName(source.FullPath);
+        if (string.IsNullOrEmpty(directory))
             return null;
-        }
-    }
 
-    /// <summary>
-    /// Filters a property bag down to just the NDFS-specific ("ndfs."-prefixed) entries, for
-    /// exporting as a .xat sidecar (see TryWriteNdfsMetadataSidecarAsync). The "is this an NDFS
-    /// key" rule itself lives in exactly one place — NdfsPropertyBagKeys.IsNdfsProperty — this and
-    /// its string-to-object dictionary overload below are thin, differently-shaped adapters
-    /// over that single rule (IPropertyBag and NdfsXatSerializer's output are two genuinely
-    /// different CLR shapes — an IPropertyBag value can be null, NdfsXatSerializer's cannot — so one
-    /// generic method can't cover both without extra allocation/casting for no real benefit).
-    /// </summary>
-    private static Dictionary<string, object> ExtractNdfsProperties(IPropertyBag bag)
-    {
-        var result = new Dictionary<string, object>();
-        var all = bag.GetAllProperties();
-        foreach (var kvp in all)
-        {
-            if (kvp.Value != null && NdfsPropertyBagKeys.IsNdfsProperty(kvp.Key))
-            {
-                result[kvp.Key] = kvp.Value;
-            }
-        }
-        return result;
-    }
+        var xatPath = Path.Combine(directory, NdfsXatSerializer.GetXatFileName(source.Name));
+        if (!File.Exists(xatPath))
+            return null;
 
-    /// <summary>
-    /// See <see cref="ExtractNdfsProperties(IPropertyBag)"/>.
-    /// </summary>
-    private static Dictionary<string, object> ExtractNdfsProperties(IDictionary<string, object> properties)
-    {
-        var result = new Dictionary<string, object>();
-        foreach (var kvp in properties)
-        {
-            if (kvp.Value != null && NdfsPropertyBagKeys.IsNdfsProperty(kvp.Key))
-            {
-                result[kvp.Key] = kvp.Value;
-            }
-        }
-        return result;
+        var parsed = NdfsXatSerializer.DeserializeFromJson(File.ReadAllText(xatPath));
+        return XatSidecarRules.Pick(parsed, declared);
     }
 
     private string GetFileSystemType(IFileSystemEntry entry, IFileSystemPanel? panel)
     {
+        // A file on a mounted disk: its driver says what it is. The property checks below are
+        // only for entries that have no driver behind them.
+        if (entry is DriverAdapterFileSystemEntry onDisk)
+            return onDisk.Driver.FileSystemType;
+
         // Try to determine from entry properties first
         if (entry.Properties.HasProperty(NdfsProperties.UserId))
             return "NDFS";

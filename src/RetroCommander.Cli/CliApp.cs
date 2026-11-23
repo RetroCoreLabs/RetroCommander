@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using RetroCommander.Core.Abstractions;
+using RetroCommander.Core.Operations;
 using RetroCommander.Core.Providers;
 using RetroCommander.Core.Services;
 using RetroIO.Storage.Core;
@@ -36,9 +37,10 @@ namespace RetroCommander.Cli
             "                                   make a blank disk (DISK is an id or a name from new --list)\n" +
             "  ls DISK[:PATH] [-l]              list a folder on a disk\n" +
             "  info DISK                        what the disk is: format, size, free space, details\n" +
-            "  copy-out DISK:FILE [TARGET]      copy a file off a disk (TARGET: a folder or a file name)\n" +
-            "  copy-in FILE... DISK[:PATH] [--name NAME]\n" +
-            "                                   copy host files onto a disk\n" +
+            "  copy-out DISK:FILE [FOLDER]      copy a file off a disk into a folder (default: here)\n" +
+            "  copy-in FILE... DISK[:PATH]      copy host files onto a disk\n" +
+            "  A file copied off a disk takes NAME.xat with it when the disk's driver declares file\n" +
+            "  properties; copy-in reads it back. Only what the driver declares is kept.\n" +
             "\n" +
             "  Any command: --ro (open read-only), --as LAYOUT (open an empty disk as that layout),\n" +
             "  --partition N (a partition of a hard disk). DISK is an image file or a URN.\n" +
@@ -322,12 +324,17 @@ namespace RetroCommander.Cli
         {
             if (o.Words.Count < 2 || o.Words.Count > 3)
             {
-                throw new CliException("copy-out DISK:FILE [TARGET]", usage: true);
+                throw new CliException("copy-out DISK:FILE [FOLDER]", usage: true);
             }
             DiskTarget source = DiskTarget.Parse(o.Words[1]);
             if (source.Path == "/")
             {
                 throw new CliException("name the file to copy: DISK:FILE", usage: true);
+            }
+            string folder = o.Words.Count == 3 ? o.Words[2] : ".";
+            if (!Directory.Exists(folder))
+            {
+                throw new CliException("no such folder: " + folder);
             }
 
             IFileSystemPanel panel = await source.OpenAsync(o, write: false);
@@ -338,21 +345,8 @@ namespace RetroCommander.Cli
                 {
                     throw new CliException(source.Path + " is a folder; copy-out copies files");
                 }
-
-                string target = o.Words.Count == 3 ? o.Words[2] : ".";
-                if (Directory.Exists(target))
-                {
-                    target = Path.Combine(target, HostName(entry.Name));
-                }
-                if (File.Exists(target))
-                {
-                    throw new CliException("the file already exists: " + target);
-                }
-
-                using Stream read = await entry.OpenReadAsync();
-                using FileStream write = new FileStream(target, FileMode.CreateNew, FileAccess.Write);
-                await read.CopyToAsync(write);
-                _out.WriteLine("copied " + entry.FullPath + " -> " + target + " (" + write.Length.ToString("N0") + " bytes)");
+                NativeFileSystemPanel host = new NativeFileSystemPanel("host", Path.GetFullPath(folder));
+                await CopyAsync(entry, host, entry.FullPath, Path.GetFullPath(folder));
             }
             finally
             {
@@ -367,11 +361,6 @@ namespace RetroCommander.Cli
                 throw new CliException("copy-in FILE... DISK[:PATH]", usage: true);
             }
             DiskTarget target = DiskTarget.Parse(o.Words[o.Words.Count - 1]);
-            string? newName = o.Value("--name");
-            if (newName != null && o.Words.Count != 3)
-            {
-                throw new CliException("--name works with one file only", usage: true);
-            }
             for (int i = 1; i < o.Words.Count - 1; i++)
             {
                 if (!File.Exists(o.Words[i]))
@@ -389,19 +378,37 @@ namespace RetroCommander.Cli
                 }
                 for (int i = 1; i < o.Words.Count - 1; i++)
                 {
-                    string name = newName ?? Path.GetFileName(o.Words[i]);
-                    using FileStream read = File.OpenRead(o.Words[i]);
-                    IFileSystemEntry created = await panel.CreateFileAsync(name, read);
-                    _out.WriteLine("copied " + o.Words[i] + " -> " + created.FullPath + " (" + read.Length.ToString("N0") + " bytes)");
+                    NativeFileSystemEntry file = new NativeFileSystemEntry(new FileInfo(Path.GetFullPath(o.Words[i])));
+                    await CopyAsync(file, panel, o.Words[i], panel.CurrentPath);
                 }
             }
             finally
             {
-                // Disposing the panel disposes the driver, which saves the disk.
+                // Closing the panel closes the driver, which saves the disk.
                 target.Close(panel);
             }
         }
 
+        // One file through the copy code the window uses (SmartFileOperations): it maps the file's
+        // properties, and between a disk and a host folder writes or reads NAME.xat when the disk's
+        // driver declares properties (XatSidecarRules).
+        private async Task CopyAsync(IFileSystemEntry entry, IFileSystemPanel into, string from, string where)
+        {
+            CopyResult result = await new SmartFileOperations().CopyAsync(entry, into, new CopyOptions());
+            if (result.Skipped)
+            {
+                _out.WriteLine("skipped " + from + ": " + result.SkipReason);
+                return;
+            }
+            if (!result.Success)
+            {
+                throw new CliException(from + ": " + result.ErrorMessage);
+            }
+            // TargetPath is where the file really landed: a driver may rename it or put it in a
+            // folder of its own choosing.
+            string landed = result.TargetPath ?? where.TrimEnd('/', '\\') + "/" + entry.Name;
+            _out.WriteLine("copied " + from + " -> " + landed + " (" + entry.Size.ToString("N0") + " bytes)");
+        }
         // ---------------------------------------------------------------- helpers
 
         private static DiskTarget OneDisk(GlobalOptions o, string usage)
