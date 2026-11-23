@@ -1,0 +1,32 @@
+//
+// SPDX-License-Identifier: MIT
+// Copyright (c) 1985-2026 Ronny Hansen
+// RetroCore Labs - https://github.com/RetroCoreLabs/RetroCommander
+// RetroCommander - Dual-pane file manager for retro disk images
+//
+
+using System;
+using System.Threading.Tasks;
+
+namespace RetroCommander.Cli
+{
+    /// <summary>
+    /// The retrocommander-cli entry point.
+    /// </summary>
+    public static class Program
+    {
+        /// <summary>
+        /// Runs one command and returns its exit code: 0 done, 1 the command failed, 2 bad usage.
+        /// </summary>
+        /// <param name="args">
+        /// The command and its arguments.
+        /// </param>
+        /// <returns>
+        /// The exit code.
+        /// </returns>
+        public static Task<int> Main(string[] args)
+        {
+            return new CliApp(Console.Out, Console.Error).RunAsync(args);
+        }
+    }
+}

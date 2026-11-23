@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- retrocommander-cli: everything the RetroCommander window does, as commands for scripts and
+       for typing by hand. It is built on RetroCommander.Core, the same code the window uses, so
+       the two cannot disagree about a disk. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>retrocommander-cli</AssemblyName>
+    <RootNamespace>RetroCommander.Cli</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RetroCommander.Core\RetroCommander.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RetroCommander.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

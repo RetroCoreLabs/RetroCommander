@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="RetroCommander.Cli/RetroCommander.Cli.csproj" />
     <Project Path="RetroCommander.Core/RetroCommander.Core.csproj" />
     <Project Path="RetroCommander.Desktop/RetroCommander.Desktop.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/RetroCommander.Cli.Tests/RetroCommander.Cli.Tests.csproj" />
     <Project Path="tests/RetroCommander.Core.Tests/RetroCommander.Core.Tests.csproj" />
     <Project Path="tests/RetroCommander.Desktop.Tests/RetroCommander.Desktop.Tests.csproj" />
   </Folder>
