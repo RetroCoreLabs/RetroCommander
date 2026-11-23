@@ -1,6 +1,14 @@
 # Plan
 
-**Next:** nothing planned.
+**Next:** PETSCII art in a Commodore directory listing (`retrocommander-cli dirart`), once RetroIO
+puts its raw directory-name functions behind a general interface with metadata.
+
+## Outstanding
+
+- `retrocommander-cli dirart`: write raw PETSCII directory names, insert separator (DEL) lines,
+  write the raw disk name and id, and preview the listing. Waits on RetroIO: today these exist only
+  on the Commodore driver class, and RetroCommander names no format. Asked for 2026-11-23.
+- The defects in `BUGS.md` (B2, B3, B4); the fixes for B2 and B3 are in RetroIO.
 
 ## Not planned
 

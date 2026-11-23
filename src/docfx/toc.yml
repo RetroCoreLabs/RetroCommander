@@ -6,6 +6,8 @@
     href: ../../README.md
   - name: The application
     href: ../RetroCommander.Desktop/README.md
+  - name: The command-line tool
+    href: ../RetroCommander.Cli/README.md
   - name: Contributing
     href: ../../.github/CONTRIBUTING.md
   - name: Security

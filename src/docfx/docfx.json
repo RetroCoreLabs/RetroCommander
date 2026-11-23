@@ -31,7 +31,7 @@
       { "files": [ "docs/**.md", "docs/**/toc.yml" ] },
       { "files": [ "README.md" ], "src": "../..", "dest": "" },
       { "files": [ "CONTRIBUTING.md", "SECURITY.md" ], "src": "../../.github", "dest": "github" },
-      { "files": [ "RetroCommander.Desktop/README.md" ], "src": "..", "dest": "" }
+      { "files": [ "RetroCommander.Desktop/README.md", "RetroCommander.Cli/README.md" ], "src": "..", "dest": "" }
     ],
     "resource": [
       { "files": [ "images/**" ] },
