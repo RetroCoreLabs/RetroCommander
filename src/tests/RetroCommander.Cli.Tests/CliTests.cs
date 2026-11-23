@@ -6,6 +6,7 @@
 //
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -227,8 +228,13 @@ namespace RetroCommander.Cli.Tests
             Assert.That(err, Does.Contain("NOPE"));
         }
 
-        // Every conversion every blank disk offers: plain text copied in and out through it comes
+        // Every conversion every disk format offers: plain text copied in and out through it comes
         // back as it went in. The text has no line ends, so no line-end option matters.
+        //
+        // A conversion belongs to the format's provider, not to a disk size, so each provider is
+        // tried once, on its smallest blank disk. The first version made every layout, the ND hard
+        // disks of 300 to 600 MB included; those tested nothing more, and on 2026-11-23 one of them
+        // failed with OutOfMemoryException while the machine had 6 GB of commit space left.
         [Test]
         public async Task EveryOfferedConversion_CopyInThenOut_GivesTheTextBack()
         {
@@ -239,6 +245,21 @@ namespace RetroCommander.Cli.Tests
             for (int i = 0; i < all.Length; i++)
             {
                 if (all[i].Provider is not RetroIO.Storage.Core.ITransferConversionProvider provider)
+                {
+                    continue;
+                }
+                bool smallest = true;
+                for (int j = 0; j < all.Length; j++)
+                {
+                    if (ReferenceEquals(all[j].Provider, all[i].Provider)
+                        && (all[j].Layout.SizeBytes < all[i].Layout.SizeBytes
+                            || (all[j].Layout.SizeBytes == all[i].Layout.SizeBytes && j < i)))
+                    {
+                        smallest = false;
+                        break;
+                    }
+                }
+                if (!smallest)
                 {
                     continue;
                 }
@@ -275,6 +296,26 @@ namespace RetroCommander.Cli.Tests
                 }
             }
             Assert.That(tried, Is.GreaterThan(0), "no blank disk offers a conversion; nothing was tested");
+
+            // Every two-way conversion of every provider was tried once: none was skipped by
+            // picking only the smallest disk.
+            List<object> seen = new List<object>();
+            int expected = 0;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i].Provider is RetroIO.Storage.Core.ITransferConversionProvider p && !seen.Contains(p))
+                {
+                    seen.Add(p);
+                    for (int c = 0; c < p.Conversions.Count; c++)
+                    {
+                        if (p.Conversions[c].Directions == RetroIO.Storage.Core.TransferDirections.Both)
+                        {
+                            expected++;
+                        }
+                    }
+                }
+            }
+            Assert.That(tried, Is.EqualTo(expected), "every conversion of every format");
         }
 
         [Test]
