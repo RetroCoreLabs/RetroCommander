@@ -48,6 +48,11 @@ namespace RetroCommander.Cli
             "  rename DISK:FILE NEWNAME         rename a file or folder\n" +
             "  props DISK:FILE                  every property the disk keeps for a file\n" +
             "  view DISK:FILE [--text|--hex]    show a file: as text, or as hex when it is not text\n" +
+            "  dirart list DISK                 directory names, the disk name and id as raw bytes\n" +
+            "  dirart add DISK POSITION NAME    put a separator line (directory art) at POSITION\n" +
+            "  dirart name DISK INDEX NAME      write the raw bytes of one entry's name\n" +
+            "  dirart header DISK NAME ID       write the raw disk name and id\n" +
+            "                                   NAME is hex bytes (\"B0 C0 A0\") or text:WORDS\n" +
             "  convert IMAGE TARGET [--chs C,H,S]\n" +
             "                                   a fixed VHD to a raw image, or a raw image to a fixed VHD\n" +
             "  assoc list | add EXT... | remove EXT... [--exe PATH]\n" +
@@ -151,6 +156,9 @@ namespace RetroCommander.Cli
                         return 0;
                     case "view":
                         await ViewAsync(o);
+                        return 0;
+                    case "dirart":
+                        await DirArtAsync(o);
                         return 0;
                     case "convert":
                         ConvertImage(o);

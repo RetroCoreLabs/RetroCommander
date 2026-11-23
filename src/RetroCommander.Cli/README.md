@@ -181,6 +181,40 @@ else as hex with offsets, so a binary file never sends control codes to the term
 `--hex` force one or the other. The bytes are shown as stored; to see a format's text as host text,
 use `copy-out --convert`.
 
+### dirart
+
+```text
+dirart list DISK
+dirart add DISK POSITION NAME
+dirart name DISK INDEX NAME
+dirart header DISK NAME ID
+```
+
+Directory art: directory names, separator lines and the disk name and id as the raw bytes the disk
+stores. A Commodore listing can draw a picture this way, with graphic characters in the names of
+separator entries that hold no data.
+
+Only disks whose driver offers raw directory names take it (today the Commodore disks); any other
+disk is refused with that said. The driver gives the name length, the pad byte, the character set
+and what a separator is, and `dirart list` prints them first.
+
+- `list` prints the disk name and id, then every entry: its place, type, blocks, the name as hex,
+  and the name as ASCII with anything outside 20h to 7Eh shown as a dot.
+- `add` puts a separator line at POSITION (0 is the top); the entries from there move down one.
+- `name` writes the name bytes of the entry at INDEX, file or separator.
+- `header` writes the disk name and the disk id.
+
+NAME and ID are hex bytes, with or without spaces (`"B0 C0 A0"`, `B0C0A0`), or `text:WORDS` for
+plain ASCII. A shorter name is padded with the pad byte; a longer one is refused.
+
+```powershell
+retrocommander-cli new art.d64 --disk cbm-d64
+retrocommander-cli dirart add art.d64 0 "B0 C0 C0 C0 C0 AE"
+retrocommander-cli dirart add art.d64 1 "text:  MY GAMES"
+retrocommander-cli dirart header art.d64 text:GAMES text:G1
+retrocommander-cli dirart list art.d64
+```
+
 ### convert
 
 ```text
@@ -361,7 +395,6 @@ error: this command changes the disk, and --ro was given
 
 ## Not done yet
 
-- **PETSCII art in a Commodore directory listing.** It waits on RetroIO: the functions that write
-  raw directory names exist only on the Commodore driver class, and the tool names no format, so
-  they are needed behind a general interface with their own metadata first.
+- **PETSCII characters in listings.** `ls` and `dirart list` show Commodore names as ASCII and hex;
+  drawing them as the C64 does, from a character ROM file you name, is being built.
 - **Known defects** are in `src/BUGS.md`.

@@ -1,13 +1,13 @@
 # Plan
 
-**Next:** PETSCII art in a Commodore directory listing (`retrocommander-cli dirart`), once RetroIO
-puts its raw directory-name functions behind a general interface with metadata.
+**Next:** PETSCII in Commodore listings, in the CLI and the window.
 
 ## Outstanding
 
-- `retrocommander-cli dirart`: write raw PETSCII directory names, insert separator (DEL) lines,
-  write the raw disk name and id, and preview the listing. Waits on RetroIO: today these exist only
-  on the Commodore driver class, and RetroCommander names no format. Asked for 2026-11-23.
+- PETSCII view, decided 2026-11-23: the CLI draws each character's 8x8 pixels from a C64 character
+  ROM file the user names (never shipped in the repository) with Unicode braille dots, 4 columns by
+  2 lines per character; the window draws Commodore listings with the same pixels. The pixels and the
+  byte-to-character order come from RetroIO as driver data, so RetroCommander names no format.
 - B4 in `BUGS.md`: making a blank disk takes the whole disk as one block of memory (RetroIO).
 
 ## Not planned
