@@ -218,6 +218,67 @@ public class MountManager
     }
 
     /// <summary>
+    /// Mounts a disk image read-write as one given blank-disk layout, without detecting the format.
+    /// </summary>
+    /// <remarks>
+    /// Used for a disk just made by File, New Image. Some freshly formatted disks are byte for byte
+    /// the same on several machines (RetroIO lists them in <c>BlankImageLayout.SameBytesAs</c>), so
+    /// detection cannot tell which machine the disk is for, and writing to it with another machine's
+    /// layout would make a disk the chosen machine cannot read. The driver's own
+    /// <c>IBlankImageProvider.Mount</c> opens it as the layout that was picked.
+    /// </remarks>
+    /// <param name="path">
+    /// The disk image file.
+    /// </param>
+    /// <param name="provider">
+    /// The driver provider that created the disk.
+    /// </param>
+    /// <param name="layoutId">
+    /// The layout to open it as.
+    /// </param>
+    /// <returns>
+    /// The mount point and panel, or null when the disk could not be opened (the reason is logged).
+    /// </returns>
+    public (MountPoint MountPoint, IFileSystemPanel Panel)? MountAsLayout(
+        string path,
+        RetroIO.Storage.Core.IBlankImageProvider provider,
+        string layoutId)
+    {
+        string urn = "file:///" + path.Replace('\\', '/');
+        FileStream? stream = null;
+        try
+        {
+            _logger?.LogOperation("Mount", $"Mounting {urn} as layout {layoutId}", LogLevel.Info);
+
+            // FileShare.Read lets other readers look but blocks a second writer, as a normal mount does.
+            stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+            RetroIO.Storage.Core.IFileSystemDriver driver = provider.Mount(stream, readOnly: false, layoutId);
+            DriverAdapterFileSystemPanel panel = new DriverAdapterFileSystemPanel(_panelManager.GetNextPanelId(), driver, urn);
+            _panelManager.RegisterPanel(panel);
+
+            MountPoint mountPoint = new MountPoint
+            {
+                Id = panel.Id,
+                Urn = urn,
+                DisplayName = panel.DisplayName,
+                FileSystemType = panel.FileSystemType,
+                IsRemote = panel.IsRemote,
+                IsReadOnly = panel.IsReadOnly
+            };
+            _mountPoints[mountPoint.Id] = mountPoint;
+            _logger?.LogInfo($"Mounted: {mountPoint.DisplayName} ({mountPoint.FileSystemType}, layout {layoutId})");
+            return (mountPoint, panel);
+        }
+        catch (Exception ex)
+        {
+            // The driver did not take the stream, so it is ours to close.
+            stream?.Dispose();
+            _logger?.LogError($"Failed to mount {urn} as layout {layoutId}", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Unmount a volume
     /// </summary>
     public bool Unmount(string mountPointId)

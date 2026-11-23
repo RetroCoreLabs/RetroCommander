@@ -118,15 +118,26 @@ namespace RetroCommander.Core.Services
         /// <param name="path">
         /// The file to write. It must not exist yet.
         /// </param>
+        /// <param name="unformatted">
+        /// True for an unformatted disk: a file of the same size, all zero bytes, with no file
+        /// system on it, for an emulator or a real machine to format itself.
+        /// </param>
         /// <exception cref="ArgumentException">
         /// Thrown when an option value is not allowed; the message names the option.
         /// </exception>
         /// <exception cref="IOException">
         /// Thrown when <paramref name="path"/> already exists or cannot be written.
         /// </exception>
-        public static void Create(BlankImageChoice choice, IReadOnlyDictionary<string, string> options, string path)
+        public static void Create(BlankImageChoice choice, IReadOnlyDictionary<string, string> options, string path, bool unformatted = false)
         {
+            // The size is taken from a real formatted disk, not from the layout's SizeBytes, because
+            // an option can change it (a custom NDFS disk's page count).
             byte[] image = choice.Provider.CreateBlank(choice.Layout.Id, options);
+            if (unformatted)
+            {
+                Array.Clear(image);
+            }
+
             using FileStream fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
             fs.Write(image, 0, image.Length);
         }

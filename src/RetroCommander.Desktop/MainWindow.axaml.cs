@@ -1861,18 +1861,16 @@ File Viewer (F3):
     }
 
     /// <summary>
-    /// F2 / File → New Image. ONE window for every format (NDFS, PC, Commodore): pick the format on
-    /// the left, configure it on the right. This replaces the old flow, which popped a format-chooser
-    /// window in FRONT of two separate dialogs and kept Commodore on a wholly separate menu item —
-    /// three entry points for one task. Mounting is now a checkbox in the dialog rather than a
-    /// follow-up yes/no prompt.
+    /// F2 / File → New Image. ONE window for every disk the RetroIO drivers can create, built from
+    /// their metadata: machine, then disk, then options, then file name. Mounting is a checkbox in
+    /// the dialog rather than a follow-up yes/no prompt.
     /// </summary>
     private async void OnF2NewImage(object? sender, RoutedEventArgs? e)
     {
         var dialog = new NewImageDialog();
         bool created = await dialog.ShowDialog<bool>(this);
 
-        if (!created || string.IsNullOrEmpty(dialog.CreatedImagePath))
+        if (!created || string.IsNullOrEmpty(dialog.CreatedImagePath) || dialog.CreatedChoice == null)
             return;
 
         string path = dialog.CreatedImagePath!;
@@ -1881,181 +1879,21 @@ File Viewer (F3):
         if (!dialog.ShouldMount)
             return;
 
-        // Let auto-detection pick the driver rather than hard-coding a scheme per format.
-        var urn = "file:///" + path.Replace("\\", "/");
-        await MountNewlyCreatedImageAsync(urn, path);
+        // Open it as the layout that was picked, through the driver that made it - not by
+        // detection, which cannot tell apart machines whose empty disks are the same bytes.
+        var mountResult = _mountManager.MountAsLayout(path, dialog.CreatedChoice.Provider, dialog.CreatedChoice.Layout.Id);
+        await ShowNewlyMountedImageAsync(mountResult, path);
     }
 
-    /// <summary>
-    /// Small format-picker shown before either creation dialog — lets "New Image" (F2) cover more
-    /// than just NDFS without merging NDFS's and PC's very different option sets into one dialog.
-    /// </summary>
-    private async Task<string?> ShowNewImageFormatChoiceAsync()
-    {
-        var chooserWindow = new Window
-        {
-            Title = "New Disk Image",
-            Width = 380,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false,
-            SizeToContent = SizeToContent.Height
-        };
 
-        var ndfsButton = new Button { Content = "NDFS Disk...", Padding = new Avalonia.Thickness(20, 10), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
-        var pcButton = new Button { Content = "PC Disk (Floppy/HDD, FAT12/16)...", Padding = new Avalonia.Thickness(20, 10), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
-        var cancelButton = new Button { Content = "Cancel", Padding = new Avalonia.Thickness(20, 8) };
-
-        ndfsButton.Click += (s, ev) => chooserWindow.Close("NDFS");
-        pcButton.Click += (s, ev) => chooserWindow.Close("PC");
-        cancelButton.Click += (s, ev) => chooserWindow.Close(null);
-
-        chooserWindow.Content = new StackPanel
-        {
-            Margin = new Avalonia.Thickness(15),
-            Spacing = 10,
-            Children =
-            {
-                new TextBlock { Text = "Select disk image format:", FontWeight = Avalonia.Media.FontWeight.Bold },
-                ndfsButton,
-                pcButton,
-                new StackPanel
-                {
-                    Orientation = Avalonia.Layout.Orientation.Horizontal,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-                    Margin = new Avalonia.Thickness(0, 10, 0, 0),
-                    Children = { cancelButton }
-                }
-            }
-        };
-
-        return await chooserWindow.ShowDialog<string?>(this);
-    }
-
-    private async Task CreateAndOfferMountNdfsImageAsync()
-    {
-        var dialog = new CreateNdfsImageDialog();
-        var result = await dialog.ShowDialog<string?>(this);
-        if (result == null)
-        {
-            return;
-        }
-
-        SetStatus($"✓ Created NDFS image: {System.IO.Path.GetFileName(result)}");
-
-        bool mountNow = await ShowYesNoDialogAsync("Mount New Image?", "NDFS image created successfully!\n\nWould you like to mount it now?");
-        if (!mountNow)
-        {
-            return;
-        }
-
-        var urn = "ndfs:///" + result.Replace("\\", "/");
-        await MountNewlyCreatedImageAsync(urn, result);
-    }
-
-    private async Task CreateAndOfferMountPcImageAsync()
-    {
-        var dialog = new CreatePcImageDialog();
-        var result = await dialog.ShowDialog<string?>(this);
-        if (result == null)
-        {
-            return;
-        }
-
-        SetStatus($"✓ Created PC disk image: {System.IO.Path.GetFileName(result)}");
-
-        bool mountNow = await ShowYesNoDialogAsync("Mount New Image?", "PC disk image created successfully!\n\nWould you like to mount it now?");
-        if (!mountNow)
-        {
-            return;
-        }
-
-        // Hard disk images have a real MBR partition (mount needs an explicit "#0" fragment,
-        // same convention as mounting any other MBR-partitioned image); floppies have no
-        // partition table and mount in raw mode with no fragment. Detect which one this is by
-        // reading the actual MBR back rather than threading a media-type flag through the dialog.
-        string fragment = DetectMbrPartitionFragment(result);
-        var urn = "file:///" + result.Replace("\\", "/") + fragment;
-        await MountNewlyCreatedImageAsync(urn, result);
-    }
-
-    private static string DetectMbrPartitionFragment(string path)
+    private async Task ShowNewlyMountedImageAsync(
+        (RetroCommander.Core.Managers.MountPoint MountPoint, IFileSystemPanel Panel)? mountResult,
+        string createdFilePath)
     {
         try
         {
-            using var fileStream = System.IO.File.OpenRead(path);
-            byte[] mbrBytes = new byte[512];
-            int read = fileStream.Read(mbrBytes, 0, 512);
-            if (read == 512)
-            {
-                var table = RetroIO.Storage.Local.MBR.Structures.MbrPartitionTable.Parse(mbrBytes);
-                if (table.IsValid() && table.GetPartitionCount() > 0)
-                {
-                    return "#0";
-                }
-            }
-        }
-        catch
-        {
-            // Not a valid MBR (e.g. a plain floppy image) — mount in raw mode.
-        }
-
-        return string.Empty;
-    }
-
-    private async Task<bool> ShowYesNoDialogAsync(string title, string message)
-    {
-        var mountDialog = new Window
-        {
-            Title = title,
-            Width = 400,
-            Height = 150,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
-        };
-
-        var yesButton = new Button { Content = "Yes", Padding = new Avalonia.Thickness(20, 8), Margin = new Avalonia.Thickness(0, 0, 10, 0) };
-        var noButton = new Button { Content = "No", Padding = new Avalonia.Thickness(20, 8) };
-
-        yesButton.Click += (s, ev) => mountDialog.Close(true);
-        noButton.Click += (s, ev) => mountDialog.Close(false);
-
-        var buttonsPanel = new StackPanel
-        {
-            Orientation = Avalonia.Layout.Orientation.Horizontal,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-            Children = { yesButton, noButton }
-        };
-
-        mountDialog.Content = new Grid
-        {
-            RowDefinitions = new RowDefinitions("*,Auto"),
-            Margin = new Avalonia.Thickness(15),
-            Children =
-            {
-                new TextBlock
-                {
-                    [Grid.RowProperty] = 0,
-                    Text = message,
-                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
-                    Margin = new Avalonia.Thickness(0, 0, 0, 15)
-                },
-                buttonsPanel
-            }
-        };
-        Grid.SetRow(buttonsPanel, 1);
-
-        return await mountDialog.ShowDialog<bool>(this);
-    }
-
-    private async Task MountNewlyCreatedImageAsync(string urn, string createdFilePath)
-    {
-        try
-        {
-            // Mount through the MountManager (not a bare CreatePanelAsync) so the new image
-            // is registered as a real mount and shows up in the sidebar Mounts list and the
-            // toolbar dropdown — same as mounting an existing image.
-            var mountResult = await _mountManager.MountAsync(urn);
+            // The MountManager registered it as a real mount, so it shows up in the sidebar Mounts
+            // list and the toolbar dropdown - same as mounting an existing image.
             if (!mountResult.HasValue)
             {
                 SetStatus($"✗ Failed to mount: {System.IO.Path.GetFileName(createdFilePath)}");

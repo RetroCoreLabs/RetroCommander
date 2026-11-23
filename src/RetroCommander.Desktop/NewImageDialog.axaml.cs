@@ -12,601 +12,462 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using RetroIO.Storage.Local;
-using RetroIO.Storage.Ndfs.Creation;
+using RetroCommander.Core.Services;
+using RetroIO.Storage.Core;
 
 namespace RetroCommander.Desktop;
 
 /// <summary>
-/// One window for creating a disk image in ANY supported format. Replaces the old three-way split
-/// (an F2 format-chooser popup in front of two separate dialogs, plus a wholly separate
-/// "New Commodore Disk" menu item).
-///
-/// The layout follows the standard "New Project" pattern: pick a format on the left, configure it
-/// on the right. Format choice is mutually exclusive and destructive (switching invalidates the
-/// options below it), which is exactly why a left-hand list is used rather than tabs — tabs imply
-/// parallel contexts you can fill in simultaneously, and they grow horizontally with every format
-/// added. The common spine (name, output path, preview, create) is shared; only the middle region
-/// swaps.
+/// File, New Image: creates a blank disk of any kind the RetroIO drivers can make.
 /// </summary>
+/// <remarks>
+/// The window is driven entirely by the drivers' blank-disk metadata (<see cref="IBlankImageProvider"/>,
+/// read through <see cref="BlankImageCatalogue"/>). Its steps:
+///  - pick a machine (every <see cref="BlankImageLayout.Machine"/> the drivers name).
+///  - pick a disk (that machine's layouts, by name and size).
+///  - fill in the layout's own options; each option checks its own value (<see cref="BlankImageOption.Check"/>).
+///  - choose the output file; the extension comes from the layout.
+/// There is no format name, size, rule or extension in this file. A format RetroIO learns to
+/// create appears here with no change, and a test fails if a format name is ever written into it.
+/// </remarks>
 public partial class NewImageDialog : Window
 {
-    /// <summary>
-    /// Set when an image was created; the full path to it.
-    /// </summary>
-    public string? CreatedImagePath { get; private set; }
+    private readonly BlankImageChoice[] _all;
+    private readonly List<BlankImageChoice> _disks = new List<BlankImageChoice>();
 
-    /// <summary>
-    /// True if the user asked for the new image to be mounted.
-    /// </summary>
-    public bool ShouldMount { get; private set; }
+    // The option controls of the selected layout, in the layout's option order.
+    private readonly List<OptionInput> _inputs = new List<OptionInput>();
 
-    // The format currently selected in the left-hand list.
-    private string _format = "NDFS";
-
-    // Guards the SelectionChanged/TextChanged handlers while we populate controls programmatically.
+    // Guards the change handlers while controls are filled in by code.
     private bool _loading = true;
 
-    // NDFS drive templates, in the order they appear in the combo.
-    private static readonly NdfsImageTemplate[] s_ndfsTemplates =
-    {
-        NdfsImageTemplate.Floppy360KB,
-        NdfsImageTemplate.Floppy12MB,
-        NdfsImageTemplate.Smd75MB,
-        NdfsImageTemplate.Winchester74MB,
-        NdfsImageTemplate.Scsi126MB,
-        NdfsImageTemplate.Custom
-    };
-
-    private static readonly NdfsBootLoaderType[] s_ndfsBootLoaders =
-    {
-        NdfsBootLoaderType.None,
-        NdfsBootLoaderType.Floppy,
-        NdfsBootLoaderType.Smd,
-        NdfsBootLoaderType.Winchester,
-        NdfsBootLoaderType.Scsi
-    };
-
     /// <summary>
-    /// Creates the dialog, fills the NDFS and PC option lists, and starts with NDFS selected.
+    /// Initializes a new instance of the <see cref="NewImageDialog"/> class, with every blank disk
+    /// the drivers describe, and the first machine selected.
     /// </summary>
     public NewImageDialog()
     {
         InitializeComponent();
-        PopulateNdfs();
-        PopulatePc();
-
-        NdfsList.SelectedIndex = 0;   // default to NDFS
+        _all = BlankImageCatalogue.List();
+        MachineList.ItemsSource = BlankImageCatalogue.Machines(_all);
         _loading = false;
-
-        SelectFormat("NDFS");
-    }
-
-    // ---------------------------------------------------------------- population
-
-    private void PopulateNdfs()
-    {
-        var items = new List<ComboBoxItem>();
-        for (int i = 0; i < s_ndfsTemplates.Length; i++)
-            items.Add(new ComboBoxItem { Content = DescribeNdfsTemplate(s_ndfsTemplates[i]) });
-
-        NdfsTemplateCombo.ItemsSource = items;
-        NdfsTemplateCombo.SelectedIndex = 2; // SMD 75MB
-
-        var boots = new List<ComboBoxItem>();
-        for (int i = 0; i < s_ndfsBootLoaders.Length; i++)
-            boots.Add(new ComboBoxItem { Content = s_ndfsBootLoaders[i].ToString() });
-
-        NdfsBootCombo.ItemsSource = boots;
-        NdfsBootCombo.SelectedIndex = 0; // None — a valid NDFS volume need not be bootable
+        if (_all.Length > 0)
+        {
+            MachineList.SelectedIndex = 0;
+        }
+        Validate();
     }
 
     /// <summary>
-    /// Human-readable drive description. Device/capacity/spare are the REAL measured geometries —
-    /// every ND drive reserves a bad-sector spare region, so the device is always larger than the
-    /// usable capacity.
+    /// Gets the full path of the created image; null until one was created.
     /// </summary>
-    private static string DescribeNdfsTemplate(NdfsImageTemplate t)
-    {
-        return t switch
-        {
-            NdfsImageTemplate.Floppy360KB => "Floppy — SINTRAN format 0 (154 pages, 308 KB)",
-            NdfsImageTemplate.Floppy12MB => "Floppy — SINTRAN format 17₈ (616 pages, 1.2 MB)",
-            NdfsImageTemplate.Smd75MB => "SMD 75 MB — DISC-75MB (36,945 usable of 38,400 pages)",
-            NdfsImageTemplate.Winchester74MB => "Winchester 74 MB — Micropolis 1325, ST-506/MFM (36,396 of 36,864)",
-            NdfsImageTemplate.Scsi126MB => "SCSI 126 MB — ND-3201 (61,036 usable of 64,656 pages)",
-            NdfsImageTemplate.Custom => "Custom size...",
-            _ => t.ToString()
-        };
-    }
-
-    private void PopulatePc()
-    {
-        PcMediaCombo.SelectedIndex = 0; // Floppy
-        RebuildPcGeometry();
-    }
-
-    private void RebuildPcGeometry()
-    {
-        bool floppy = PcMediaCombo.SelectedIndex == 0;
-        var items = new List<ComboBoxItem>();
-
-        if (floppy)
-        {
-            items.Add(new ComboBoxItem { Content = "360 KB — 5.25\" DD (40/2/9)" });
-            items.Add(new ComboBoxItem { Content = "720 KB — 3.5\" DD (80/2/9)" });
-            items.Add(new ComboBoxItem { Content = "1.2 MB — 5.25\" HD (80/2/15)" });
-            items.Add(new ComboBoxItem { Content = "1.44 MB — 3.5\" HD (80/2/18)" });
-            items.Add(new ComboBoxItem { Content = "2.88 MB — 3.5\" ED (80/2/36)" });
-        }
-        else
-        {
-            items.Add(new ComboBoxItem { Content = "5 MB — XT type 0 (306/2/17)" });
-            items.Add(new ComboBoxItem { Content = "10 MB — XT, ST-412 (306/4/17)" });
-            items.Add(new ComboBoxItem { Content = "15 MB — XT type 2 (306/6/17)" });
-            items.Add(new ComboBoxItem { Content = "26 MB — XT type 1 (375/8/17)" });
-            items.Add(new ComboBoxItem { Content = "20 MB — AT, ST-225 (615/4/17)" });
-            items.Add(new ComboBoxItem { Content = "30 MB — AT type 3 (615/6/17)" });
-            items.Add(new ComboBoxItem { Content = "47 MB — AT type 5 (940/6/17)" });
-            items.Add(new ComboBoxItem { Content = "62 MB — AT type 4 (940/8/17)" });
-        }
-
-        PcGeometryCombo.ItemsSource = items;
-        PcGeometryCombo.SelectedIndex = floppy ? 3 : 4; // 1.44MB / AT 20MB
-    }
-
-    // ---------------------------------------------------------------- format switching
-
-    private void OnFormatSelected(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_loading || sender is not ListBox list || list.SelectedItem is not ListBoxItem item)
-            return;
-
-        // Single logical selection across the three grouped lists — clear the others.
-        _loading = true;
-        if (!ReferenceEquals(list, NdfsList)) NdfsList.SelectedItem = null;
-        if (!ReferenceEquals(list, PcList)) PcList.SelectedItem = null;
-        if (!ReferenceEquals(list, CbmList)) CbmList.SelectedItem = null;
-        _loading = false;
-
-        SelectFormat(item.Tag?.ToString() ?? "NDFS");
-    }
-
-    private void SelectFormat(string format)
-    {
-        _format = format;
-
-        bool ndfs = format == "NDFS";
-        bool pc = format == "PC";
-        bool cbm = !ndfs && !pc;
-
-        NdfsPanel.IsVisible = ndfs;
-        PcPanel.IsVisible = pc;
-        CbmPanel.IsVisible = cbm;
-
-        FormatTitle.Text = format switch
-        {
-            "NDFS" => "NDFS Disk (Norsk Data)",
-            "PC" => "PC Disk (FAT12 / FAT16)",
-            "D64" => "Commodore D64 — 1541",
-            "D71" => "Commodore D71 — 1571",
-            "D81" => "Commodore D81 — 1581",
-            _ => format
-        };
-
-        UpdatePreviewAndValidation();
-    }
-
-    // ---------------------------------------------------------------- change handlers
-
-    private void OnNdfsOptionChanged(object? sender, RoutedEventArgs e)
-    {
-        if (_loading) return;
-
-        bool custom = SelectedNdfsTemplate() == NdfsImageTemplate.Custom;
-        NdfsCustomPages.IsVisible = custom;
-
-        bool blank = NdfsBlankCheck.IsChecked == true;
-        NdfsBlankNote.IsVisible = blank;
-
-        // A blank image carries no metadata at all, so every metadata field is meaningless.
-        NdfsName.IsEnabled = !blank;
-        NdfsBootCombo.IsEnabled = !blank;
-        NdfsExtInfoCheck.IsEnabled = !blank;
-        NdfsExtFields.IsEnabled = !blank && NdfsExtInfoCheck.IsChecked == true;
-
-        UpdatePreviewAndValidation();
-    }
-
-    private void OnNdfsOptionChanged(object? sender, SelectionChangedEventArgs e) => OnNdfsOptionChanged(sender, (RoutedEventArgs)null!);
-    private void OnNdfsTextChanged(object? sender, TextChangedEventArgs e) => UpdatePreviewAndValidation();
-
-    private void OnPcOptionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (_loading) return;
-        if (ReferenceEquals(sender, PcMediaCombo))
-        {
-            _loading = true;
-            RebuildPcGeometry();
-            _loading = false;
-        }
-        UpdatePreviewAndValidation();
-    }
-
-    private void OnPcTextChanged(object? sender, TextChangedEventArgs e) => UpdatePreviewAndValidation();
-    private void OnCbmTextChanged(object? sender, TextChangedEventArgs e) => UpdatePreviewAndValidation();
-    private void OnOutputChanged(object? sender, TextChangedEventArgs e) => UpdatePreviewAndValidation();
-
-    private NdfsImageTemplate SelectedNdfsTemplate()
-    {
-        int i = NdfsTemplateCombo.SelectedIndex;
-        return (i >= 0 && i < s_ndfsTemplates.Length) ? s_ndfsTemplates[i] : NdfsImageTemplate.Smd75MB;
-    }
-
-    // ---------------------------------------------------------------- preview + validation
+    public string? CreatedImagePath { get; private set; }
 
     /// <summary>
-    /// Rebuilds the preview line and the validation message. Per-format name rules differ, so they
-    /// are checked inline here rather than blowing up on Create.
+    /// Gets the disk that was created, so the caller can mount it as that exact layout.
     /// </summary>
-    private void UpdatePreviewAndValidation()
-    {
-        if (_loading) return;
+    public BlankImageChoice? CreatedChoice { get; private set; }
 
-        string preview;
+    /// <summary>
+    /// Gets a value indicating whether the user asked for the new image to be mounted.
+    /// </summary>
+    public bool ShouldMount { get; private set; }
+
+    /// <summary>
+    /// Gets the layout picked now, or null when none is.
+    /// </summary>
+    internal BlankImageChoice? SelectedDisk =>
+        DiskCombo.SelectedIndex >= 0 && DiskCombo.SelectedIndex < _disks.Count ? _disks[DiskCombo.SelectedIndex] : null;
+
+    /// <summary>
+    /// Selects a machine by name, as a click in the list would; for tests.
+    /// </summary>
+    /// <param name="machine">
+    /// A machine name the drivers give.
+    /// </param>
+    /// <returns>
+    /// True when the machine is in the list.
+    /// </returns>
+    internal bool SelectMachine(string machine)
+    {
+        string[] machines = (string[])MachineList.ItemsSource!;
+        for (int i = 0; i < machines.Length; i++)
+        {
+            if (string.Equals(machines[i], machine, StringComparison.OrdinalIgnoreCase))
+            {
+                MachineList.SelectedIndex = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Selects a disk of the current machine by layout id, as a pick in the list would; for tests.
+    /// </summary>
+    /// <param name="layoutId">
+    /// The layout id the driver gives.
+    /// </param>
+    /// <returns>
+    /// True when the layout belongs to the selected machine.
+    /// </returns>
+    internal bool SelectDisk(string layoutId)
+    {
+        for (int i = 0; i < _disks.Count; i++)
+        {
+            if (_disks[i].Layout.Id == layoutId)
+            {
+                DiskCombo.SelectedIndex = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Sets an option's value, as typing or picking it would; for tests.
+    /// </summary>
+    /// <param name="optionId">
+    /// The option id the driver gives.
+    /// </param>
+    /// <param name="value">
+    /// The value, as text ("true"/"false" for a tick box).
+    /// </param>
+    internal void SetOption(string optionId, string value)
+    {
+        for (int i = 0; i < _inputs.Count; i++)
+        {
+            if (_inputs[i].Option.Id == optionId)
+            {
+                _inputs[i].SetValue(value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the option controls shown now; for tests.
+    /// </summary>
+    internal int OptionCount => _inputs.Count;
+
+    /// <summary>
+    /// Reads the controls into the values to create the disk with; UI thread only.
+    /// </summary>
+    /// <returns>
+    /// The option values by option id.
+    /// </returns>
+    internal Dictionary<string, string> OptionValues()
+    {
+        Dictionary<string, string> values = new Dictionary<string, string>(_inputs.Count);
+        for (int i = 0; i < _inputs.Count; i++)
+        {
+            values[_inputs[i].Option.Id] = _inputs[i].GetValue();
+        }
+        return values;
+    }
+
+    /// <summary>
+    /// Checks every input and shows the first problem; returns whether Create may be pressed.
+    /// </summary>
+    /// <returns>
+    /// True when every option is accepted by its driver and an output file is chosen.
+    /// </returns>
+    internal bool Validate()
+    {
         string? error = null;
-
-        if (_format == "NDFS")
+        if (SelectedDisk == null)
         {
-            preview = PreviewNdfs(out error);
-        }
-        else if (_format == "PC")
-        {
-            preview = PreviewPc(out error);
-        }
-        else
-        {
-            preview = PreviewCbm(out error);
+            error = "Pick a disk.";
         }
 
-        PreviewText.Text = preview;
+        for (int i = 0; i < _inputs.Count && error == null; i++)
+        {
+            error = _inputs[i].Option.Check(_inputs[i].GetValue());
+        }
 
-        if (error == null && string.IsNullOrWhiteSpace(OutputPath.Text))
-            error = "Choose an output file.";
+        string path = (OutputPath.Text ?? string.Empty).Trim();
+        if (error == null && path.Length > 0 && File.Exists(path))
+        {
+            error = "The file already exists; choose another name.";
+        }
 
         ValidationText.Text = error ?? string.Empty;
         ValidationText.IsVisible = error != null;
-        CreateButton.IsEnabled = error == null;
+        bool ok = error == null && path.Length > 0;
+        CreateButton.IsEnabled = ok;
+
+        // An unformatted disk has no file system, so there is nothing to mount.
+        bool unformatted = UnformattedCheck.IsChecked == true;
+        MountAfterCreate.IsEnabled = !unformatted;
+        if (unformatted)
+        {
+            MountAfterCreate.IsChecked = false;
+        }
+        return ok;
     }
 
-    private string PreviewNdfs(out string? error)
+    private void OnMachineSelected(object? sender, SelectionChangedEventArgs e)
     {
-        error = null;
-
-        NdfsImageTemplate template = SelectedNdfsTemplate();
-        uint capacity, device;
-
-        if (template == NdfsImageTemplate.Custom)
+        if (_loading || MachineList.SelectedItem is not string machine)
         {
-            if (!uint.TryParse((NdfsCustomPages.Text ?? string.Empty).Trim(), out capacity) || capacity < 8)
-            {
-                error = "Enter a custom page count (at least 8 pages).";
-                return "—";
-            }
-            // Custom sizes have no real drive behind them, so the spare region is only an estimate.
-            device = capacity;
-        }
-        else
-        {
-            (capacity, device) = NdfsGeometry(template);
+            return;
         }
 
-        if (NdfsBlankCheck.IsChecked != true)
+        _loading = true;
+        MachineTitle.Text = machine;
+        _disks.Clear();
+        List<string> names = new List<string>();
+        for (int i = 0; i < _all.Length; i++)
         {
-            string name = (NdfsName.Text ?? string.Empty).Trim();
-            if (name.Length == 0)
-                error = "Enter a directory name.";
-            else if (name.Length > 16)
-                error = "Directory name must be 16 characters or fewer.";
-            else
+            if (string.Equals(_all[i].Layout.Machine, machine, StringComparison.OrdinalIgnoreCase))
             {
-                for (int i = 0; i < name.Length; i++)
-                {
-                    if (name[i] < 0x20 || name[i] > 0x7E)
-                    {
-                        error = "Directory name must be printable ASCII.";
-                        break;
-                    }
-                }
-            }
-
-            if (error == null && NdfsExtInfoCheck.IsChecked == true)
-            {
-                if (!ushort.TryParse((NdfsSystemNumber.Text ?? "0").Trim(), out _))
-                    error = "System number must be a number (0-65535).";
-                else if (!ushort.TryParse((NdfsFlagWord.Text ?? "0").Trim(), out _))
-                    error = "Flag word must be a number (0-65535).";
+                _disks.Add(_all[i]);
+                names.Add(_all[i].Layout.Name);
             }
         }
-
-        long bytes = (long)device * 2048;
-        uint spare = device > capacity ? device - capacity : 0;
-
-        string s = $"{device:N0} device pages × 2048 B = {bytes / (1024.0 * 1024.0):F1} MB";
-        if (spare > 0)
-            s += $"\n{capacity:N0} usable pages · {spare:N0} pages reserved for bad-sector remapping";
-        else
-            s += $"\n{capacity:N0} usable pages";
-
-        if (NdfsBlankCheck.IsChecked == true)
-            s += "\nBlank: all 0x00 — no boot sector, no directory, not mountable.";
-
-        return s;
+        DiskCombo.ItemsSource = names;
+        _loading = false;
+        DiskCombo.SelectedIndex = _disks.Count > 0 ? 0 : -1;
     }
 
-    /// <summary>
-    /// Real measured drive geometry: (usable capacity, physical device) in pages.
-    /// </summary>
-    private static (uint capacity, uint device) NdfsGeometry(NdfsImageTemplate t)
+    private void OnDiskSelected(object? sender, SelectionChangedEventArgs e)
     {
-        return t switch
+        if (_loading)
         {
-            NdfsImageTemplate.Floppy360KB => (154u, 154u),
-            NdfsImageTemplate.Floppy12MB => (616u, 616u),
-            NdfsImageTemplate.Smd75MB => (36945u, 38400u),
-            NdfsImageTemplate.Winchester74MB => (36396u, 36864u),
-            NdfsImageTemplate.Scsi126MB => (61036u, 64656u),
-            _ => (0u, 0u)
-        };
-    }
-
-    private string PreviewPc(out string? error)
-    {
-        error = null;
-
-        string label = (PcLabel.Text ?? string.Empty).Trim();
-        if (label.Length > 11)
-            error = "FAT volume labels are limited to 11 characters.";
-
-        bool floppy = PcMediaCombo.SelectedIndex == 0;
-        int idx = PcGeometryCombo.SelectedIndex;
-        if (idx < 0)
-        {
-            error ??= "Choose a geometry.";
-            return "—";
+            return;
         }
 
-        var item = (PcGeometryCombo.ItemsSource as List<ComboBoxItem>)?[idx];
-        string desc = item?.Content?.ToString() ?? "";
-
-        return floppy
-            ? $"FAT12 floppy — {desc}"
-            : $"FAT16 hard disk — {desc}";
+        BuildOptions(SelectedDisk);
+        ShowDetails(SelectedDisk);
+        Validate();
     }
 
-    private string PreviewCbm(out string? error)
+    private void OnInputChanged(object? sender, RoutedEventArgs e)
     {
-        error = null;
-
-        string name = (CbmName.Text ?? string.Empty).Trim();
-        string id = (CbmId.Text ?? string.Empty).Trim();
-
-        if (name.Length == 0)
-            error = "Enter a disk name.";
-        else if (name.Length > 16)
-            error = "Commodore disk names are limited to 16 characters.";
-        else if (id.Length != 2)
-            error = "Disk ID must be exactly 2 characters.";
-
-        return _format switch
+        if (!_loading)
         {
-            "D64" => "D64 — 1541, 35 tracks, 174,848 bytes",
-            "D71" => "D71 — 1571, 70 tracks, 349,696 bytes",
-            "D81" => "D81 — 1581, 80 tracks, 819,200 bytes",
-            _ => "—"
-        };
+            Validate();
+        }
     }
 
-    // ---------------------------------------------------------------- browse / create
+    // One row per option of the layout: a label and a control of the option's kind.
+    private void BuildOptions(BlankImageChoice? choice)
+    {
+        _inputs.Clear();
+        OptionsGrid.Children.Clear();
+        OptionsGrid.RowDefinitions.Clear();
+        if (choice == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<BlankImageOption> options = choice.Layout.Options;
+        for (int i = 0; i < options.Count; i++)
+        {
+            OptionsGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            TextBlock label = new TextBlock
+            {
+                Text = options[i].Label + ":",
+                MinWidth = 120,
+                MaxWidth = 260,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap
+            };
+            label.Classes.Add("Label");
+            Grid.SetRow(label, i);
+            OptionsGrid.Children.Add(label);
+
+            OptionInput input = OptionInput.For(options[i], () => { if (!_loading) Validate(); });
+            Grid.SetRow(input.Control, i);
+            Grid.SetColumn(input.Control, 1);
+            OptionsGrid.Children.Add(input.Control);
+            _inputs.Add(input);
+        }
+    }
+
+    private void ShowDetails(BlankImageChoice? choice)
+    {
+        if (choice == null)
+        {
+            DetailsText.Text = string.Empty;
+            return;
+        }
+
+        // The driver's internal format name is not shown: it names the driver, not the disk
+        // (PC hard disks come from the PC floppy driver, so its name would call them floppies).
+        BlankImageLayout l = choice.Layout;
+        string text = l.SizeBytes.ToString("N0") + " bytes, file type " + l.Extension;
+        if (l.Details.Length > 0)
+        {
+            text += "\n" + l.Details;
+        }
+        if (l.SameBytesAs.Count > 0)
+        {
+            // Said plainly, because the disk will only open as this machine's layout when it is
+            // mounted from here; detection alone cannot tell these machines apart while it is empty.
+            string[] same = new string[l.SameBytesAs.Count];
+            for (int i = 0; i < same.Length; i++)
+            {
+                same[i] = DescribeLayout(l.SameBytesAs[i]);
+            }
+            text += "\nAn empty disk of this kind is byte for byte the same as: " + string.Join("; ", same)
+                + ". It is opened as the disk picked here; once it holds files it is recognised by itself.";
+        }
+        DetailsText.Text = text;
+    }
+
+    // "Kaypro 4, 400 KB floppy - ..." for a layout id, from the drivers' own names.
+    private string DescribeLayout(string layoutId)
+    {
+        for (int i = 0; i < _all.Length; i++)
+        {
+            if (_all[i].Layout.Id == layoutId)
+            {
+                return _all[i].Layout.Machine + ", " + _all[i].Layout.Name;
+            }
+        }
+        return layoutId;
+    }
 
     private async void OnBrowseClick(object? sender, RoutedEventArgs e)
     {
-        string ext = _format switch
+        BlankImageChoice? choice = SelectedDisk;
+        if (choice == null)
         {
-            "D64" => "d64",
-            "D71" => "d71",
-            "D81" => "d81",
-            _ => "img"
-        };
+            return;
+        }
 
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        string ext = choice.Layout.Extension;
+        string bare = ext.TrimStart('.');
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Save Disk Image",
-            DefaultExtension = ext,
-            SuggestedFileName = $"new.{ext}",
+            DefaultExtension = bare,
+            SuggestedFileName = "new" + ext,
             FileTypeChoices = new List<FilePickerFileType>
             {
-                new FilePickerFileType("Disk Images")
-                {
-                    Patterns = new[] { "*.img", "*.d64", "*.d71", "*.d81", "*.ndfs" }
-                },
+                new FilePickerFileType("Disk image (*" + ext + ")") { Patterns = new[] { "*" + ext } },
                 new FilePickerFileType("All Files") { Patterns = new[] { "*.*" } }
             }
         });
 
         if (file != null)
+        {
             OutputPath.Text = file.Path.LocalPath;
+        }
     }
 
     private async void OnCreateClick(object? sender, RoutedEventArgs e)
     {
+        BlankImageChoice? choice = SelectedDisk;
         string path = (OutputPath.Text ?? string.Empty).Trim();
-        if (string.IsNullOrEmpty(path))
+        if (choice == null || !Validate())
+        {
             return;
+        }
 
         CreateButton.IsEnabled = false;
         try
         {
-            // Snapshot EVERY control value HERE, on the UI thread. The actual file creation runs on
-            // a background thread (images can be 100+ MB), and Avalonia controls may only be touched
-            // from the UI thread — reading a TextBox/ComboBox inside the Task.Run body throws
-            // "Call from invalid thread". So the worker gets plain data, never a control.
-            NewImageRequest request = BuildRequest(path);
-
-            await Task.Run(() => Execute(request));
+            // Read every control here, on the UI thread; the disk is written on a background
+            // thread (a hard disk can be hundreds of MB) and controls may not be touched there.
+            Dictionary<string, string> values = OptionValues();
+            bool unformatted = UnformattedCheck.IsChecked == true;
+            await Task.Run(() => BlankImageCatalogue.Create(choice, values, path, unformatted));
 
             CreatedImagePath = path;
-            ShouldMount = MountAfterCreate.IsChecked == true;
+            CreatedChoice = choice;
+            ShouldMount = !unformatted && MountAfterCreate.IsChecked == true;
             Close(true);
         }
         catch (Exception ex)
         {
-            ValidationText.Text = $"Create failed: {ex.Message}";
+            ValidationText.Text = "Create failed: " + ex.Message;
             ValidationText.IsVisible = true;
             CreateButton.IsEnabled = true;
         }
     }
 
-    /// <summary>
-    /// A pure, control-free description of the image to create. Built on the UI thread; consumed on
-    /// a background thread. Also the seam the headless UI tests drive.
-    /// </summary>
-    internal sealed class NewImageRequest
-    {
-        public string Format = "NDFS";
-        public string OutputPath = string.Empty;
-
-        // NDFS
-        public NdfsImageTemplate NdfsTemplate;
-        public uint NdfsCustomPages;
-        public string NdfsDirectoryName = string.Empty;
-        public NdfsBootLoaderType NdfsBoot;
-        public bool NdfsIncludeExtInfo;
-        public bool NdfsBlank;
-        public ushort NdfsSystemNumber;
-        public ushort NdfsFlagWord;
-
-        // PC
-        public bool PcIsFloppy;
-        public PcFloppySize PcFloppy;
-        public PcHddPreset PcHdd;
-        public string PcVolumeLabel = string.Empty;
-
-        // Commodore
-        public CbmDiskType CbmType;
-        public string CbmDiskName = string.Empty;
-        public string CbmDiskId = string.Empty;
-    }
-
-    /// <summary>
-    /// Reads the controls (UI thread only) into a plain request object.
-    /// </summary>
-    internal NewImageRequest BuildRequest(string path)
-    {
-        var r = new NewImageRequest { Format = _format, OutputPath = path };
-
-        if (_format == "NDFS")
-        {
-            r.NdfsTemplate = SelectedNdfsTemplate();
-            r.NdfsBlank = NdfsBlankCheck.IsChecked == true;
-            r.NdfsDirectoryName = r.NdfsBlank ? "EMPTY" : (NdfsName.Text ?? "EMPTY").Trim();
-            r.NdfsIncludeExtInfo = NdfsExtInfoCheck.IsChecked == true;
-
-            if (r.NdfsTemplate == NdfsImageTemplate.Custom)
-                uint.TryParse((NdfsCustomPages.Text ?? "0").Trim(), out r.NdfsCustomPages);
-
-            int bootIdx = NdfsBootCombo.SelectedIndex;
-            r.NdfsBoot = (bootIdx >= 0 && bootIdx < s_ndfsBootLoaders.Length)
-                ? s_ndfsBootLoaders[bootIdx]
-                : NdfsBootLoaderType.None;
-
-            if (r.NdfsIncludeExtInfo && !r.NdfsBlank)
-            {
-                ushort.TryParse((NdfsSystemNumber.Text ?? "0").Trim(), out r.NdfsSystemNumber);
-                ushort.TryParse((NdfsFlagWord.Text ?? "0").Trim(), out r.NdfsFlagWord);
-            }
-        }
-        else if (_format == "PC")
-        {
-            r.PcVolumeLabel = (PcLabel.Text ?? string.Empty).Trim();
-            r.PcIsFloppy = PcMediaCombo.SelectedIndex == 0;
-            int idx = PcGeometryCombo.SelectedIndex;
-
-            if (r.PcIsFloppy)
-            {
-                r.PcFloppy = idx switch
-                {
-                    0 => PcFloppySize.Size360K,
-                    1 => PcFloppySize.Size720K,
-                    2 => PcFloppySize.Size1_2M,
-                    4 => PcFloppySize.Size2_88M,
-                    _ => PcFloppySize.Size1_44M
-                };
-            }
-            else
-            {
-                r.PcHdd = idx switch
-                {
-                    0 => PcHddPreset.Xt5MB,
-                    1 => PcHddPreset.Xt10MB,
-                    2 => PcHddPreset.Xt15MB,
-                    3 => PcHddPreset.Xt26MB,
-                    5 => PcHddPreset.At30MB,
-                    6 => PcHddPreset.At47MB,
-                    7 => PcHddPreset.At62MB,
-                    _ => PcHddPreset.At20MB
-                };
-            }
-        }
-        else
-        {
-            r.CbmType = _format switch
-            {
-                "D71" => CbmDiskType.D71,
-                "D81" => CbmDiskType.D81,
-                _ => CbmDiskType.D64
-            };
-            r.CbmDiskName = (CbmName.Text ?? "BLANK").Trim();
-            r.CbmDiskId = (CbmId.Text ?? "01").Trim();
-        }
-
-        return r;
-    }
-
-    /// <summary>
-    /// Creates the image. PURE — touches no UI, so it is safe on a background thread and directly
-    /// unit-testable.
-    /// </summary>
-    internal static void Execute(NewImageRequest r)
-    {
-        if (r.Format == "NDFS")
-        {
-            var options = new NdfsImageCreationOptions
-            {
-                Template = r.NdfsTemplate,
-                DirectoryName = r.NdfsDirectoryName,
-                IncludeExtendedInfo = r.NdfsIncludeExtInfo,
-                CreateBlankImage = r.NdfsBlank,
-                BootLoaderType = r.NdfsBoot,
-                CustomNdfsPages = r.NdfsCustomPages,
-                SystemNumber = r.NdfsSystemNumber,
-                FlagWord = r.NdfsFlagWord
-            };
-
-            NdfsImageCreator.CreateImage(r.OutputPath, options);
-        }
-        else if (r.Format == "PC")
-        {
-            if (r.PcIsFloppy)
-                PcImageFactory.CreateBlankFloppyFile(r.PcFloppy, r.OutputPath, r.PcVolumeLabel);
-            else
-                PcImageFactory.CreateBlankHardDiskFile(r.PcHdd, r.OutputPath, r.PcVolumeLabel);
-        }
-        else
-        {
-            CbmImageFactory.CreateBlankFile(r.CbmType, r.OutputPath, r.CbmDiskName, r.CbmDiskId);
-        }
-    }
-
     private void OnCancelClick(object? sender, RoutedEventArgs e) => Close(false);
+
+    // One option's control: a text box, a list or a tick box, by the option's kind.
+    private sealed class OptionInput
+    {
+        private OptionInput(BlankImageOption option, Control control)
+        {
+            Option = option;
+            Control = control;
+        }
+
+        public delegate void Changed();
+
+        public BlankImageOption Option { get; }
+
+        public Control Control { get; }
+
+        public static OptionInput For(BlankImageOption option, Changed changed)
+        {
+            switch (option.Kind)
+            {
+                case BlankImageOptionKind.Choice:
+                    {
+                        ComboBox combo = new ComboBox { ItemsSource = option.Choices, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch };
+                        int at = -1;
+                        for (int i = 0; i < option.Choices.Count; i++)
+                        {
+                            if (option.Choices[i] == option.Default)
+                            {
+                                at = i;
+                            }
+                        }
+                        combo.SelectedIndex = at >= 0 ? at : (option.Choices.Count > 0 ? 0 : -1);
+                        combo.SelectionChanged += (_, _) => changed();
+                        return new OptionInput(option, combo);
+                    }
+
+                case BlankImageOptionKind.Flag:
+                    {
+                        CheckBox box = new CheckBox { IsChecked = option.Default == "true" };
+                        box.IsCheckedChanged += (_, _) => changed();
+                        return new OptionInput(option, box);
+                    }
+
+                default:
+                    {
+                        TextBox text = new TextBox { Text = option.Default };
+                        if (option.MaxLength > 0)
+                        {
+                            text.MaxLength = option.MaxLength;
+                        }
+                        text.TextChanged += (_, _) => changed();
+                        return new OptionInput(option, text);
+                    }
+            }
+        }
+
+        public string GetValue()
+        {
+            return Control switch
+            {
+                ComboBox c => c.SelectedItem as string ?? string.Empty,
+                CheckBox b => b.IsChecked == true ? "true" : "false",
+                TextBox t => t.Text ?? string.Empty,
+                _ => string.Empty
+            };
+        }
+
+        public void SetValue(string value)
+        {
+            switch (Control)
+            {
+                case ComboBox c:
+                    c.SelectedItem = value;
+                    break;
+                case CheckBox b:
+                    b.IsChecked = value == "true";
+                    break;
+                case TextBox t:
+                    t.Text = value;
+                    break;
+            }
+        }
+    }
 }
