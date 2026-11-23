@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="RetroCommander.Desktop.DirectoryListingWindow"
+        Title="Directory listing"
+        Width="760" Height="640"
+        MinWidth="560" MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        Background="{DynamicResource FluentBackgroundPrimaryBrush}"
+        FontFamily="{DynamicResource FluentFontFamily}"
+        FontSize="{DynamicResource FluentFontSize}">
+
+    <!-- The directory as the machine draws it: every name pixel for pixel from the character ROM
+         the user chose. The listing area keeps fixed screen colours on purpose; it shows the
+         machine's screen, not the app, so it does not follow the theme. -->
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Grid.Column="0" Text="Character ROM:" VerticalAlignment="Center"
+                           Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                <TextBlock Grid.Column="1" Name="RomPathText" Margin="8,0" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource FluentTextPrimaryBrush}"/>
+                <Button Grid.Column="2" Content="Choose..." Click="OnChooseRomClick"/>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,Auto,*">
+                <TextBlock Grid.Column="0" Text="Character set:" VerticalAlignment="Center"
+                           Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+                <ComboBox Grid.Column="1" Name="SetCombo" Margin="8,0" MinWidth="220"
+                          SelectionChanged="OnSetChanged"/>
+            </Grid>
+            <TextBlock Name="MessageText" TextWrapping="Wrap" IsVisible="False"
+                       Foreground="{DynamicResource FluentTextSecondaryBrush}"/>
+        </StackPanel>
+
+        <Border Background="#352879" Padding="16" CornerRadius="2">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <StackPanel Name="ListingPanel" Spacing="0"/>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>

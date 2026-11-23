@@ -323,6 +323,18 @@ namespace RetroCommander.Cli
                     await panel.NavigateAsync(target.Path);
                 }
                 await panel.RefreshAsync();
+
+                // With a character ROM named and a disk whose driver can draw its names, the top
+                // folder is listed as the machine draws it, from the raw directory.
+                if (target.Path == "/"
+                    && panel is DriverAdapterFileSystemPanel drawn
+                    && drawn.Driver is IRawDirectoryNames raw
+                    && GlyphDrawing.Open(o, raw.RawLayout) is GlyphDrawing drawing)
+                {
+                    WriteDrawnListing(raw, drawing);
+                    return;
+                }
+
                 bool longForm = o.Flags.Contains("-l");
                 string[][] rows = new string[panel.Entries.Count][];
                 for (int i = 0; i < panel.Entries.Count; i++)

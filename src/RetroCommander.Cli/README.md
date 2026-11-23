@@ -48,6 +48,7 @@ where the file landed.
 | `--ro` | Opens the disk read-only. A command that changes the disk then fails. |
 | `--as LAYOUT` | Opens the disk as a given blank-disk type (an id from `new --list`) instead of detecting it. Needed for an empty disk whose bytes are the same on several machines: an empty Kaypro 4 disk and an empty TIKI-100 400 KB disk are byte for byte the same. |
 | `--partition N` | One partition of a partitioned hard disk, counting from 0. |
+| `--charset FILE` | A character ROM to draw names with, on disks whose driver can draw them (see dirart). |
 | `--help`, `-h` | The command list. |
 
 A command that only reads (`ls`, `info`, `copy-out`, `props`, `view`, `conversions`) opens the disk
@@ -214,6 +215,31 @@ retrocommander-cli dirart add art.d64 1 "text:  MY GAMES"
 retrocommander-cli dirart header art.d64 text:GAMES text:G1
 retrocommander-cli dirart list art.d64
 ```
+
+#### Drawing names as the machine does
+
+With a character ROM file named, `ls` (on the top folder) and `dirart list` draw every name, and the
+disk name and id, pixel for pixel from that ROM, in Unicode braille dots: one 8 by 8 character is 4
+columns and 2 lines, so a 16-byte name is 64 columns wide.
+
+```powershell
+retrocommander-cli ls art.d64 --charset roms\characters.901225-01.bin
+$env:RETROCOMMANDER_CHARSET = 'roms\characters.901225-01.bin'
+retrocommander-cli dirart list art.d64 --lower
+```
+
+- `--charset FILE` names the ROM; without it the environment variable `RETROCOMMANDER_CHARSET` is used.
+  Without either, names are shown as hex and ASCII as before.
+- `--lower` draws in the ROM's second character set (on a Commodore disk: lower and upper case).
+- RetroCommander ships no ROM. The driver says which ROM it expects and how big it is; a file of
+  another size is refused with that description.
+- Reversed characters are drawn from the ROM's own glyphs, never by flipping bits: in the C64 ROM the
+  reversed `@` is not an exact flip of the plain one.
+- Your terminal font needs the braille characters (U+2800 to U+28FF). Windows Terminal and WSL
+  showed them on 2026-11-23.
+
+The window has the same view: right-click a Commodore disk's panel and choose **Directory listing...**.
+It draws the names at twice size with sharp pixels and remembers the ROM you choose there.
 
 ### convert
 
@@ -395,6 +421,4 @@ error: this command changes the disk, and --ro was given
 
 ## Not done yet
 
-- **PETSCII characters in listings.** `ls` and `dirart list` show Commodore names as ASCII and hex;
-  drawing them as the C64 does, from a character ROM file you name, is being built.
 - **Known defects** are in `src/BUGS.md`.

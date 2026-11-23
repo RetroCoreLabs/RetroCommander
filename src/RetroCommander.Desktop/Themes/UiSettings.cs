@@ -76,6 +76,12 @@ namespace RetroCommander.Desktop.Themes
         /// </summary>
         public bool UseXatMetadataOnImport { get; set; } = true;
 
+        /// <summary>
+        /// The character ROM file the Directory listing window draws names with, chosen once in that
+        /// window; null until one is chosen. RetroCommander ships no ROM.
+        /// </summary>
+        public string? CharacterRomPath { get; set; }
+
         // ------------------------------------------------------------------
 
         private static UiSettings? s_instance;

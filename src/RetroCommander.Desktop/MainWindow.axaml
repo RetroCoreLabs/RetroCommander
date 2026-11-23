@@ -27,6 +27,8 @@
                 <MenuItem Header="Disk _Info..." Click="OnDiskInfoClick"/>
                 <MenuItem Header="NDFS Disk _Info..." Name="NdfsDiskInfoMenuItem"
                           Click="OnNdfsDiskInfoClick" IsVisible="False"/>
+                <MenuItem Header="Directory _listing..." Name="ListingMenuItem"
+                          Click="OnListingClick" IsVisible="False"/>
                 <Separator/>
                 <MenuItem Header="_Settings..." Click="OnSettingsClick"/>
                 <Separator/>
@@ -144,6 +146,8 @@
                                               Click="OnLeftConvertClick" IsVisible="False"/>
                                     <MenuItem Header="NDFS Disk Info..." Name="LeftNdfsDiskInfoMenuItem"
                                               Click="OnLeftNdfsDiskInfoClick" IsVisible="False"/>
+                                    <MenuItem Header="Directory listing..." Name="LeftListingMenuItem"
+                                              Click="OnLeftListingClick" IsVisible="False"/>
                                 </ContextMenu>
                             </DataGrid.ContextMenu>
                         </DataGrid>
@@ -245,6 +249,8 @@
                                               Click="OnRightConvertClick" IsVisible="False"/>
                                     <MenuItem Header="NDFS Disk Info..." Name="RightNdfsDiskInfoMenuItem"
                                               Click="OnRightNdfsDiskInfoClick" IsVisible="False"/>
+                                    <MenuItem Header="Directory listing..." Name="RightListingMenuItem"
+                                              Click="OnRightListingClick" IsVisible="False"/>
                                 </ContextMenu>
                             </DataGrid.ContextMenu>
                         </DataGrid>

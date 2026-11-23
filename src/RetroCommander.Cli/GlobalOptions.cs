@@ -28,7 +28,7 @@ namespace RetroCommander.Cli
         // Options that take a value; anything else starting with '-' is a flag.
         private static readonly string[] s_valueOptions =
         {
-            "--as", "--partition", "--machine", "--disk", "--set", "--convert", "--exe", "--chs"
+            "--as", "--partition", "--machine", "--disk", "--set", "--convert", "--exe", "--chs", "--charset"
         };
 
         /// <summary>

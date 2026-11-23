@@ -1665,6 +1665,63 @@ public partial class MainWindow : Window
 
         if (RightNdfsDiskInfoMenuItem != null)
             RightNdfsDiskInfoMenuItem.IsVisible = IsNdfsPanel(_rightPanel);
+
+        // "Directory listing..." follows the same rule: only where the disk's driver can draw names.
+        if (ListingMenuItem != null)
+            ListingMenuItem.IsVisible = DrawsNames(activePanel) != null;
+
+        if (LeftListingMenuItem != null)
+            LeftListingMenuItem.IsVisible = DrawsNames(_leftPanel) != null;
+
+        if (RightListingMenuItem != null)
+            RightListingMenuItem.IsVisible = DrawsNames(_rightPanel) != null;
+    }
+
+    /// <summary>
+    /// The panel's driver when it can draw its directory names as the machine does (it offers raw
+    /// directory names with a glyph table); otherwise null. No format is named.
+    /// </summary>
+    private static IRawDirectoryNames? DrawsNames(IFileSystemPanel? panel)
+    {
+        return panel is DriverAdapterFileSystemPanel adapter
+               && adapter.Driver is IRawDirectoryNames raw
+               && GlyphRaster.CanDraw(raw.RawLayout)
+            ? raw
+            : null;
+    }
+
+    private void OnListingClick(object? sender, RoutedEventArgs e)
+        => _ = ShowListingAsync(_leftPanelActive ? _leftPanel : _rightPanel);
+
+    private void OnLeftListingClick(object? sender, RoutedEventArgs e)
+        => _ = ShowListingAsync(_leftPanel);
+
+    private void OnRightListingClick(object? sender, RoutedEventArgs e)
+        => _ = ShowListingAsync(_rightPanel);
+
+    private async Task ShowListingAsync(IFileSystemPanel? panel)
+    {
+        IRawDirectoryNames? raw = DrawsNames(panel);
+        if (raw == null)
+        {
+            SetStatus("Directory listing: this disk's driver does not draw its names.");
+            return;
+        }
+
+        try
+        {
+            // The ROM the user chose last time; a new choice in the window is kept for next time.
+            var listing = new DirectoryListingWindow(raw, panel!.DisplayName, UiSettings.Instance.CharacterRomPath, path =>
+            {
+                UiSettings.Instance.CharacterRomPath = path;
+                UiSettings.Instance.Save();
+            });
+            await listing.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            SetStatus("Directory listing failed: " + ex.Message);
+        }
     }
 
     private void UpdatePanelVisualState()

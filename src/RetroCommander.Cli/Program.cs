@@ -27,6 +27,9 @@ namespace RetroCommander.Cli
         /// </returns>
         public static Task<int> Main(string[] args)
         {
+            // UTF-8 out, so drawn names (Unicode braille, see GlyphDrawing) and non-ASCII file names
+            // reach the terminal as characters; the Windows console's own code page turns them into '?'.
+            Console.OutputEncoding = new System.Text.UTF8Encoding(false);
             return new CliApp(Console.Out, Console.Error, Console.In).RunAsync(args);
         }
     }

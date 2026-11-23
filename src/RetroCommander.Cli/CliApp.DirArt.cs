@@ -73,6 +73,12 @@ namespace RetroCommander.Cli
                 {
                     case "list":
                         ListRaw(raw, layout);
+                        if (GlyphDrawing.Open(o, layout) is GlyphDrawing drawing)
+                        {
+                            _out.WriteLine();
+                            WriteDrawnListing(raw, drawing);
+                        }
+
                         break;
                     case "add":
                     {
@@ -129,6 +135,31 @@ namespace RetroCommander.Cli
                 _out.WriteLine(e.Index.ToString(CultureInfo.InvariantCulture).PadLeft(3) + "  "
                     + e.TypeName.PadRight(5) + e.Blocks.ToString(CultureInfo.InvariantCulture).PadLeft(5) + "  "
                     + Hex(e.Name) + "  " + AsAscii(e.Name));
+            }
+        }
+
+        // The listing as the machine draws it: the disk name and id on top, then per entry its
+        // blocks, its name and its type, each name drawn from the character ROM.
+        private void WriteDrawnListing(IRawDirectoryNames raw, GlyphDrawing drawing)
+        {
+            _out.WriteLine("(drawn in the " + drawing.SetName + " set)");
+            string[] name = drawing.Draw(raw.ReadRawVolumeName());
+            string[] id = drawing.Draw(raw.ReadRawVolumeId());
+            for (int l = 0; l < name.Length; l++)
+            {
+                _out.WriteLine("      " + name[l] + " " + id[l]);
+            }
+
+            RawDirectoryEntry[] entries = raw.ReadRawDirectory();
+            for (int i = 0; i < entries.Length; i++)
+            {
+                string[] lines = drawing.Draw(entries[i].Name);
+                for (int l = 0; l < lines.Length; l++)
+                {
+                    string left = l == 0 ? entries[i].Blocks.ToString(CultureInfo.InvariantCulture).PadLeft(5) + " " : "      ";
+                    string right = l == 0 ? " " + entries[i].TypeName : string.Empty;
+                    _out.WriteLine(left + lines[l] + right);
+                }
             }
         }
 
