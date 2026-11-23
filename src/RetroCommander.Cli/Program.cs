@@ -17,6 +17,7 @@ namespace RetroCommander.Cli
     {
         /// <summary>
         /// Runs one command and returns its exit code: 0 done, 1 the command failed, 2 bad usage.
+        /// With no command it opens the interactive prompt on the keyboard.
         /// </summary>
         /// <param name="args">
         /// The command and its arguments.
@@ -26,7 +27,7 @@ namespace RetroCommander.Cli
         /// </returns>
         public static Task<int> Main(string[] args)
         {
-            return new CliApp(Console.Out, Console.Error).RunAsync(args);
+            return new CliApp(Console.Out, Console.Error, Console.In).RunAsync(args);
         }
     }
 }

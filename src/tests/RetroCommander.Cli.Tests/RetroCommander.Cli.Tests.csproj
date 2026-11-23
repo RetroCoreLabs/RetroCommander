@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\RetroCommander.Cli\RetroCommander.Cli.csproj" />
+    <!-- The throw-away registry helper, shared with the Core and Desktop tests. -->
+    <Compile Include="..\RetroCommander.Core.Tests\TestRegistry.cs" Link="Shared\TestRegistry.cs" />
   </ItemGroup>
 
 </Project>

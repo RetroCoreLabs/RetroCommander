@@ -259,6 +259,16 @@ public class SmartFileOperations : IFileOperationsManager
     {
         options ??= new MoveOptions();
 
+        // Moving a file into the folder it is already in, on the same volume: the copy would land
+        // on the file itself and the delete below would then remove the only copy. Found with
+        // retrocommander-cli, where it emptied a disk image.
+        if (!string.IsNullOrEmpty(targetPanel.VolumeUrn) &&
+            string.Equals(sourcePanel.VolumeUrn, targetPanel.VolumeUrn, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(FolderOf(source.FullPath), FolderOf(targetPanel.CurrentPath + "/x"), StringComparison.OrdinalIgnoreCase))
+        {
+            return MoveResult.Failure($"'{source.Name}' is already in {targetPanel.CurrentPath}");
+        }
+
         try
         {
             // Copy first
@@ -551,6 +561,16 @@ public class SmartFileOperations : IFileOperationsManager
 
         var parsed = NdfsXatSerializer.DeserializeFromJson(File.ReadAllText(xatPath));
         return XatSidecarRules.Pick(parsed, declared);
+    }
+
+    // The folder part of a path inside a volume, with forward slashes: "/SUB/A" -> "/SUB", "/A" -> "/".
+    private static string FolderOf(string path)
+    {
+        string p = path.Replace('\\', '/');
+        int slash = p.LastIndexOf('/');
+        if (slash <= 0)
+            return "/";
+        return p.Substring(0, slash).TrimEnd('/') is { Length: > 0 } folder ? folder : "/";
     }
 
     private string GetFileSystemType(IFileSystemEntry entry, IFileSystemPanel? panel)

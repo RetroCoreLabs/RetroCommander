@@ -43,11 +43,19 @@ namespace RetroCommander.Cli.Tests
         }
 
         [Test]
-        public async Task NoCommand_PrintsHelp_ExitCode2()
+        public async Task Help_ListsEveryCommand()
         {
-            (int code, string output, _) = await Run();
-            Assert.That(code, Is.EqualTo(2));
-            Assert.That(output, Does.Contain("copy-in"));
+            (int code, string output, _) = await Run("--help");
+            Assert.That(code, Is.EqualTo(0));
+            string[] commands =
+            {
+                "formats", "new", "ls", "info", "copy-out", "copy-in", "conversions", "copy", "move",
+                "mkdir", "rm", "rename", "props", "view", "convert", "assoc", "script"
+            };
+            for (int i = 0; i < commands.Length; i++)
+            {
+                Assert.That(output, Does.Contain("  " + commands[i] + " "), commands[i]);
+            }
         }
 
         [Test]

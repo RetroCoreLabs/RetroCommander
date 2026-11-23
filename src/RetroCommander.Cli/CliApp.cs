@@ -26,7 +26,7 @@ namespace RetroCommander.Cli
     /// their options and the checks on them. No format is named in this program; a test fails if
     /// one ever is.
     /// </remarks>
-    internal sealed class CliApp
+    internal sealed partial class CliApp
     {
         private const string Help =
             "retrocommander-cli - RetroCommander's disk functions as commands\n" +
@@ -41,6 +41,19 @@ namespace RetroCommander.Cli
             "  copy-in FILE... DISK[:PATH]      copy host files onto a disk\n" +
             "  conversions DISK                 the conversions the disk offers for copy-in/copy-out\n" +
             "  copy-in/copy-out ... --convert ID [--set NAME=VALUE]...  convert the bytes on the way\n" +
+            "  copy DISK:FILE DISK[:PATH]       copy a file from one disk to another (or another folder)\n" +
+            "  move DISK:FILE DISK[:PATH]       the same, then delete the original\n" +
+            "  mkdir DISK:PATH                  make a folder\n" +
+            "  rm DISK:FILE...                  delete files or folders\n" +
+            "  rename DISK:FILE NEWNAME         rename a file or folder\n" +
+            "  props DISK:FILE                  every property the disk keeps for a file\n" +
+            "  view DISK:FILE [--text|--hex]    show a file: as text, or as hex when it is not text\n" +
+            "  convert IMAGE TARGET [--chs C,H,S]\n" +
+            "                                   a fixed VHD to a raw image, or a raw image to a fixed VHD\n" +
+            "  assoc list | add EXT... | remove EXT... [--exe PATH]\n" +
+            "                                   link disk image file types to RetroCommander in Windows\n" +
+            "  script FILE                      run commands from a file, one per line (# for notes)\n" +
+            "  (no command)                     an interactive prompt; exit or an empty input ends it\n" +
             "  A file copied off a disk takes NAME.xat with it when the disk's driver declares file\n" +
             "  properties; copy-in reads it back. Only what the driver declares is kept.\n" +
             "\n" +
@@ -50,6 +63,7 @@ namespace RetroCommander.Cli
 
         private readonly TextWriter _out;
         private readonly TextWriter _err;
+        private readonly TextReader _in;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CliApp"/> class.
@@ -60,10 +74,14 @@ namespace RetroCommander.Cli
         /// <param name="error">
         /// Where error messages go.
         /// </param>
-        public CliApp(TextWriter output, TextWriter error)
+        /// <param name="input">
+        /// Where the interactive prompt reads its commands; null for none (the prompt ends at once).
+        /// </param>
+        public CliApp(TextWriter output, TextWriter error, TextReader? input = null)
         {
             _out = output;
             _err = error;
+            _in = input ?? TextReader.Null;
         }
 
         /// <summary>
@@ -80,10 +98,14 @@ namespace RetroCommander.Cli
             try
             {
                 GlobalOptions o = GlobalOptions.Parse(args);
-                if (o.Words.Count == 0 || o.Words[0] == "help" || o.Flags.Contains("--help") || o.Flags.Contains("-h"))
+                if (o.Flags.Contains("--help") || o.Flags.Contains("-h") || (o.Words.Count > 0 && o.Words[0] == "help"))
                 {
                     _out.Write(Help);
-                    return o.Words.Count == 0 && !o.Flags.Contains("--help") && !o.Flags.Contains("-h") ? 2 : 0;
+                    return 0;
+                }
+                if (o.Words.Count == 0)
+                {
+                    return await PromptAsync();
                 }
 
                 switch (o.Words[0])
@@ -109,6 +131,35 @@ namespace RetroCommander.Cli
                     case "conversions":
                         await ConversionsAsync(o);
                         return 0;
+                    case "copy":
+                        await CopyOrMoveAsync(o, move: false);
+                        return 0;
+                    case "move":
+                        await CopyOrMoveAsync(o, move: true);
+                        return 0;
+                    case "mkdir":
+                        await MkdirAsync(o);
+                        return 0;
+                    case "rm":
+                        await RmAsync(o);
+                        return 0;
+                    case "rename":
+                        await RenameAsync(o);
+                        return 0;
+                    case "props":
+                        await PropsAsync(o);
+                        return 0;
+                    case "view":
+                        await ViewAsync(o);
+                        return 0;
+                    case "convert":
+                        ConvertImage(o);
+                        return 0;
+                    case "assoc":
+                        Assoc(o);
+                        return 0;
+                    case "script":
+                        return await ScriptAsync(o);
                     default:
                         throw new CliException("unknown command '" + o.Words[0] + "'; run with --help", usage: true);
                 }
