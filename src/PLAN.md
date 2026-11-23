@@ -1,13 +1,9 @@
 # Plan
 
-**Next:** PETSCII in Commodore listings, in the CLI and the window.
+**Next:** nothing planned.
 
 ## Outstanding
 
-- PETSCII view, decided 2026-11-23: the CLI draws each character's 8x8 pixels from a C64 character
-  ROM file the user names (never shipped in the repository) with Unicode braille dots, 4 columns by
-  2 lines per character; the window draws Commodore listings with the same pixels. The pixels and the
-  byte-to-character order come from RetroIO as driver data, so RetroCommander names no format.
 - B4 in `BUGS.md`: making a blank disk takes the whole disk as one block of memory (RetroIO).
 
 ## Not planned
