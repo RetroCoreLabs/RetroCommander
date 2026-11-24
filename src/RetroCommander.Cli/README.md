@@ -56,6 +56,16 @@ read-only even without `--ro`, so it never holds a write lock another program mi
 
 ## Commands
 
+### version
+
+Which build this is, in one line: the version, the commit it was built from and its branch,
+"(uncommitted changes)" when the tree was not clean, and the build date and time. `--version`
+does the same. Help, About in the window shows the same values.
+
+```text
+retrocommander-cli 0.1.0, commit d74769394dc8 on main, built 24.Nov.2026 01:38:20
+```
+
 ### formats
 
 Every disk format the drivers know: the machines, the file extensions, and whether each can be

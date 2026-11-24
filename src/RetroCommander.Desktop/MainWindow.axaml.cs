@@ -15,6 +15,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
+using RetroCommander.Core;
 using RetroCommander.Core.Abstractions;
 using RetroCommander.Core.Caching;
 using RetroCommander.Core.Configuration;
@@ -874,16 +875,17 @@ public partial class MainWindow : Window
         SetStatus("Refreshed");
     }
 
-    private static string GetDisplayVersion()
-    {
-        var info = (System.Reflection.Assembly.GetEntryAssembly() ?? typeof(MainWindow).Assembly)
-            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false);
-        if (info.Length == 0)
-            return "unknown";
-        var text = ((System.Reflection.AssemblyInformationalVersionAttribute)info[0]).InformationalVersion;
-        var plus = text.IndexOf('+');
-        return plus >= 0 ? text.Substring(0, plus) : text;
-    }
+    /// <summary>
+    /// The lines under the title in Help, About: what the program is, its version, the commit it was
+    /// built from (and whether the tree had uncommitted changes), the build date and time, and the
+    /// copyright, all read from the build's own stamp.
+    /// </summary>
+    internal static string AboutText()
+        => "Retro Filesystem Manager\n"
+           + "Version " + BuildIdentity.Version + "\n"
+           + BuildIdentity.CommitLine() + "\n"
+           + "Built " + BuildIdentity.BuildDate + " " + BuildIdentity.BuildTime + "\n"
+           + BuildIdentity.Copyright;
 
     private async void OnSupportedFormatsClick(object? sender, RoutedEventArgs e)
     {
@@ -899,8 +901,8 @@ public partial class MainWindow : Window
         var about = new Window
         {
             Title = "About RetroCommander",
-            Width = 380,
-            Height = 270,
+            Width = 420,
+            Height = 340,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
@@ -920,9 +922,9 @@ public partial class MainWindow : Window
 
         var subtitle = new TextBlock
         {
-            // InformationalVersion carries the full version, including a -rc1 style suffix, and the
-            // release build sets it from the git tag. The +commit part the SDK appends is cut off.
-            Text = "Retro Filesystem Manager\nVersion " + GetDisplayVersion(),
+            // Every value is the build's own stamp (BuildIdentity, from src/Directory.Build.props),
+            // as RetroTerm's Help, About shows it: version, commit, build date and time.
+            Text = AboutText(),
             TextAlignment = Avalonia.Media.TextAlignment.Center,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };

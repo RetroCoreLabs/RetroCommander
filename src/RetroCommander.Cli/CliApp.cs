@@ -31,6 +31,7 @@ namespace RetroCommander.Cli
         private const string Help =
             "retrocommander-cli - RetroCommander's disk functions as commands\n" +
             "\n" +
+            "  version (or --version)           which build this is: version, commit, build date and time\n" +
             "  formats                          every disk format, with machines and what it can do\n" +
             "  new --list                       the blank disks that can be made, with their options\n" +
             "  new FILE --disk DISK [--machine MACHINE] [--set NAME=VALUE]... [--unformatted]\n" +
@@ -106,6 +107,12 @@ namespace RetroCommander.Cli
                 if (o.Flags.Contains("--help") || o.Flags.Contains("-h") || (o.Words.Count > 0 && o.Words[0] == "help"))
                 {
                     _out.Write(Help);
+                    return 0;
+                }
+                if (o.Flags.Contains("--version") || (o.Words.Count > 0 && o.Words[0] == "version"))
+                {
+                    // The build's own stamp (BuildIdentity, from src/Directory.Build.props).
+                    _out.WriteLine(RetroCommander.Core.BuildIdentity.Describe("retrocommander-cli"));
                     return 0;
                 }
                 if (o.Words.Count == 0)

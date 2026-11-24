@@ -20,4 +20,75 @@
   <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
+
+  <!-- Build date, time and git identity, stamped into every assembly and shown in Help, About and
+       by retrocommander-cli version. The same rules as RetroTerm's src/Directory.Build.props, so
+       the two programs report a build the same way. BuildDate and BuildTime answer "when"; the git
+       values answer "which code", and GitDirty says whether the tree had uncommitted changes. -->
+  <PropertyGroup>
+    <CurrentDate>$([System.DateTime]::Now.ToString("dd.MMM.yyyy"))</CurrentDate>
+    <CurrentTime>$([System.DateTime]::Now.ToString("HH:mm:ss"))</CurrentTime>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildDate</_Parameter1>
+      <_Parameter2>$(CurrentDate)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildTime</_Parameter1>
+      <_Parameter2>$(CurrentTime)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- Captured in a target, because MSBuild evaluates properties before any target runs, so an
+       Exec's output cannot reach a static ItemGroup. Every step tolerates git being absent or this
+       not being a checkout: a build must not fail because somebody unzipped the source, and the
+       values then read "unknown". -->
+  <Target Name="CaptureGitIdentity" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse --short=12 HEAD"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="low"
+          ContinueOnError="true"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitCommitCaptured" />
+    </Exec>
+    <Exec Command="git rev-parse --abbrev-ref HEAD"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="low"
+          ContinueOnError="true"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitBranchCaptured" />
+    </Exec>
+    <!-- Any output at all means something is uncommitted: the hash alone would claim a clean tree
+         that is not there. -->
+    <Exec Command="git status --porcelain"
+          ConsoleToMSBuild="true"
+          StandardOutputImportance="low"
+          ContinueOnError="true"
+          IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitStatusCaptured" />
+    </Exec>
+    <PropertyGroup>
+      <GitCommit Condition="'$(GitCommitCaptured)' != ''">$(GitCommitCaptured.Trim())</GitCommit>
+      <GitCommit Condition="'$(GitCommit)' == ''">unknown</GitCommit>
+      <GitBranch Condition="'$(GitBranchCaptured)' != ''">$(GitBranchCaptured.Trim())</GitBranch>
+      <GitBranch Condition="'$(GitBranch)' == ''">unknown</GitBranch>
+      <GitDirty Condition="'$(GitStatusCaptured.Trim())' != ''">true</GitDirty>
+      <GitDirty Condition="'$(GitDirty)' == ''">false</GitDirty>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitCommit</_Parameter1>
+        <_Parameter2>$(GitCommit)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitBranch</_Parameter1>
+        <_Parameter2>$(GitBranch)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitDirty</_Parameter1>
+        <_Parameter2>$(GitDirty)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
 </Project>
